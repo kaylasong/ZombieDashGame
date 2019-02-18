@@ -9,18 +9,21 @@ class StudentWorld;
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 class Actor: public GraphObject{
 public:
-    Actor(bool inf, bool des, StudentWorld* sw,
-          std:: string id, int x, int y, int dir, int dep);
+    Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
+    bool haveCollided(Actor* a, Actor* b);
     //accessors
-    bool canBeInf();
-    bool canBeDes();
+    void kill(){m_isDead=true;}
+    bool canBeInf(){return(canBeInfected);}
+    bool canBeDes(){return(canBeDestroyed);}
+    bool isDead(){return(m_isDead);}
+    StudentWorld* getWorld(){return(world);}
     
 private:
     int boundingBox;
     bool canBeInfected;
     bool canBeDestroyed;
-    bool isDead;
+    bool m_isDead;
     StudentWorld* world;
 };
 
@@ -28,21 +31,22 @@ private:
 
 class Damageable: public Actor{
 public:
-    Damageable();
+    Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep);
 };
 
 //////////////
 class Infectable: public Damageable{
 public:
-    Infectable();
+    Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep);
     void incrementIC();
+    void getInfected();
 private:
     int infectedCount;
 };
 
 class Penelope: public Infectable{
 public:
-    Penelope();
+    Penelope(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     //all the goodie thingies
     void setVaccines(int x);
@@ -59,73 +63,77 @@ private:
 
 class Citizen: public Infectable{
 public:
-    Citizen();
+    Citizen(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 ///////////////
 class Goodie: public Damageable{
 public:
-    Goodie();
-    virtual void doSomething();
+    Goodie(StudentWorld* sw, int id, int x, int y,Penelope* pen);
 private:
     Penelope* p;
 };
 
 class VaccineGoodie: public Goodie{
 public:
-    VaccineGoodie();
+    VaccineGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
     virtual void doSomething();
 };
 
 class GasCanGoodie: public Goodie{
 public:
-    GasCanGoodie();
+    GasCanGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
     virtual void doSomething();
 };
 class LandmineGoodie: public Goodie{
 public:
-    LandmineGoodie();
+    LandmineGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
     virtual void doSomething();
 };
 
 ///////////////
 class Zombie: public Damageable{
 public:
-    Zombie();
+    Zombie(StudentWorld* sw, int x, int y);
     void vomit(Infectable* target);
 };
 
 class DumbZombie: public Zombie{
 public:
-    DumbZombie();
+    DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc);
     virtual void doSomething();
 private:
-    VaccineGoodie* vacc;
+    bool holdsVaccine;
 };
 
 class SmartZombie: public Zombie{
 public:
+    SmartZombie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 /////////////////////////////////
 
 class Damaging: public Actor{
 public:
-    void damage();
+    Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y, int dir, int dep);
+    virtual void damage(Damageable* target);
 };
 
 class Pit: public Damaging{
 public:
+    Pit(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 
 class Landmine: public Damaging{
 public:
+    Landmine(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 
 class Projectile: public Damaging{
 public:
+    Projectile(StudentWorld* sw, int id, int x, int y, int dir);
     void decST();
 private:
     int screenTime;
@@ -133,11 +141,13 @@ private:
 
 class Flame: public Projectile{
 public:
+    Flame(StudentWorld* sw, int x, int y, int dir);
     virtual void doSomething();
 };
 
 class Vomit: public Projectile{
 public:
+    Vomit(StudentWorld* sw, int x, int y, int dir);
     virtual void doSomething();
 };
 

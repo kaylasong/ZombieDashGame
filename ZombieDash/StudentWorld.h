@@ -5,7 +5,7 @@
 #include <string>
 #include "GraphObject.h"
 #include "Actor.h"
-#include <vector>
+#include <list>
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 
@@ -22,7 +22,7 @@ public:
     int getNumCitizens(); 
 private:
     Penelope* penelope;
-    std::vector<Actor> actors;
+    std::list<Actor> actors;
     
 };
 
