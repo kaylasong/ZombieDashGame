@@ -1,5 +1,6 @@
 #include "Actor.h"
 #include "StudentWorld.h"
+#include <list>
 
 //implement: Actor::haveCollided, all the doSomethings, all the deploys
 
@@ -8,14 +9,59 @@
 //class StudentWorld;
 //// Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
-:GraphObject(id, x, y, dir, dep)
-{
+:GraphObject(id, x, y, dir, dep){
     canBeInfected=inf;
     canBeDestroyed=des;
     world=sw;
     m_isDead=false;
+    boundingBox=100;
+}
+bool Actor::haveCollided(Actor* a, Actor* b){
+    if((a->getX()-b->getX())*(a->getX()-b->getX())+(a->getY()-b->getY())*(a->getY()-b->getY())<=
+       (a->boundingBox))
+        return(true);
+    return(false);
+}
+Actor* Actor::nearSomething(){
+    std::list<Actor*>::iterator it=world->getActors();
+    while(it!=world->getEnd()){
+        if((this->getX()!=(*it)->getX() && this->getY()!=(*it)->getY()))
+           if(haveCollided(this,(*it)))
+               return(*it);
+        it++;
+    }
+    return(nullptr);
 }
 //implement haveCollided
+
+Wall::Wall(StudentWorld* sw, int x, int y)
+:Actor(false,false,sw,11,x,y,0,0){
+    setBoundingBox(256);
+}
+void Wall::doSomething(){
+    Actor* other=this->nearSomething();
+    if(other==nullptr)
+        return;
+    
+}
+
+Exit::Exit(StudentWorld* sw, int x, int y)
+:Actor(false,false,sw,10,x,y,0,1){}
+void Exit::doSomething(){
+    Actor* other=this->nearSomething();
+    if(other==nullptr)
+        return;
+    if(other->canBeInf()){
+        if(!getWorld()->isPenelope(other)){
+            //let them in
+        }
+        else if(getWorld()->getNumCitizens()==0){
+            //let penelope in
+        }
+    }
+}
+
+
 
 Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 :Actor(inf, true, sw, id, x, y, dir, dep)
@@ -52,16 +98,18 @@ Citizen::Citizen(StudentWorld* sw, int x, int y)
 void Citizen::doSomething(){}
 
 ///////////////
-Goodie::Goodie(StudentWorld* sw, int id, int x, int y,Penelope* pen)
-:Damageable(false,sw,id,x,y,0,1){
-    p=pen;
-}
-VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y, Penelope* pen)
-:Goodie(sw,7,x,y,pen){}
-GasCanGoodie::GasCanGoodie(StudentWorld* sw, int x, int y, Penelope* pen)
-:Goodie(sw,8,x,y,pen){}
-LandmineGoodie::LandmineGoodie(StudentWorld* sw, int x, int y, Penelope* pen)
-:Goodie(sw,9,x,y,pen){}
+Goodie::Goodie(StudentWorld* sw, int id, int x, int y)
+:Damageable(false,sw,id,x,y,0,1){}
+VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y)
+:Goodie(sw,7,x,y){}
+void VaccineGoodie::doSomething(){}
+GasCanGoodie::GasCanGoodie(StudentWorld* sw, int x, int y)
+:Goodie(sw,8,x,y){}
+void GasCanGoodie::doSomething(){}
+LandmineGoodie::LandmineGoodie(StudentWorld* sw, int x, int y)
+:Goodie(sw,9,x,y){}
+void LandmineGoodie::doSomething(){}
+
 /////////////////
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Zombie::Zombie(StudentWorld* sw, int x, int y)

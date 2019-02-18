@@ -12,19 +12,33 @@ public:
     Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
     bool haveCollided(Actor* a, Actor* b);
+    Actor* nearSomething();
     //accessors
     void kill(){m_isDead=true;}
     bool canBeInf(){return(canBeInfected);}
     bool canBeDes(){return(canBeDestroyed);}
     bool isDead(){return(m_isDead);}
+    void setBoundingBox(int x){boundingBox=x;}
     StudentWorld* getWorld(){return(world);}
-    
 private:
     int boundingBox;
     bool canBeInfected;
     bool canBeDestroyed;
     bool m_isDead;
     StudentWorld* world;
+};
+
+//////////////////////////////////
+class Wall: public Actor{
+public:
+    Wall(StudentWorld* sw, int x, int y);
+    void doSomething();
+};
+
+class Exit: public Actor{
+public:
+    Exit(StudentWorld* sw, int x, int y);
+    void doSomething();
 };
 
 //////////////////////////////////
@@ -69,25 +83,24 @@ public:
 ///////////////
 class Goodie: public Damageable{
 public:
-    Goodie(StudentWorld* sw, int id, int x, int y,Penelope* pen);
-private:
-    Penelope* p;
+    Goodie(StudentWorld* sw, int id, int x, int y);
+    void editPenelope();
 };
 
 class VaccineGoodie: public Goodie{
 public:
-    VaccineGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
+    VaccineGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 
 class GasCanGoodie: public Goodie{
 public:
-    GasCanGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
+    GasCanGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 class LandmineGoodie: public Goodie{
 public:
-    LandmineGoodie(StudentWorld* sw, int x, int y, Penelope* pen);
+    LandmineGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 

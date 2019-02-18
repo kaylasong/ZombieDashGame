@@ -17,13 +17,26 @@ public:
     virtual int move();
     virtual void cleanUp();
 
+    ~StudentWorld();
     void addItem(Actor* add);
-    Penelope* getPenelope();
-    int getNumCitizens(); 
+    void getRidOfDead(); 
+    bool isPenelope(Actor* other){
+        return(other==penelope);
+    }
+    int getNumCitizens(){
+        return(numCitizens);
+    }
+    std::list<Actor*>::iterator getActors(){
+        return(actors.begin());
+    }
+    std::list<Actor*>::iterator getEnd(){
+        return(actors.end());
+    }
+
 private:
     Penelope* penelope;
-    std::list<Actor> actors;
-    
+    std::list<Actor*> actors;
+    int numCitizens;
 };
 
 #endif // STUDENTWORLD_H_
