@@ -3,6 +3,9 @@
 
 #include "GameWorld.h"
 #include <string>
+#include "GraphObject.h"
+#include "Actor.h"
+#include <vector>
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 
@@ -14,7 +17,13 @@ public:
     virtual int move();
     virtual void cleanUp();
 
+    void addItem(Actor* add);
+    Penelope* getPenelope();
+    int getNumCitizens(); 
 private:
+    Penelope* penelope;
+    std::vector<Actor> actors;
+    
 };
 
 #endif // STUDENTWORLD_H_
