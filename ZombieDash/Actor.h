@@ -12,7 +12,10 @@ public:
     Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
     bool haveCollided(Actor* a, Actor* b);
-    Actor* nearSomething();
+    Actor* objectOverlap(double x, double y);
+    int nearObstacle(Actor* other);
+    bool willHitObstacle(double x, double y);
+    
     //accessors
     void kill(){m_isDead=true;}
     bool canBeInf(){return(canBeInfected);}
@@ -21,6 +24,7 @@ public:
     bool isObs(){return(isObstacle);}
     void setBoundingBox(int x){boundingBox=x;}
     StudentWorld* getWorld(){return(world);}
+    int getBoundingBox(){return(boundingBox);}
 private:
     int boundingBox;
     bool canBeInfected;
@@ -75,6 +79,7 @@ private:
     int numVaccines;
     int numFlames;
     int numLandmines;
+    bool checkMovement(int dir); 
 };
 
 class Citizen: public Infectable{

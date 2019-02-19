@@ -1,6 +1,7 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 #include <list>
+using namespace std;
 
 //implement:all the doSomethings, all the deploys
 
@@ -15,40 +16,43 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     world=sw;
     m_isDead=false;
     isObstacle=obs;
-    boundingBox=100;
+    boundingBox=10;
 }
-bool Actor::haveCollided(Actor* a, Actor* b){
-    if((a->getX()-b->getX())*(a->getX()-b->getX())+(a->getY()-b->getY())*(a->getY()-b->getY())<=
-       (a->boundingBox))
-        return(true);
-    return(false);
-}
-Actor* Actor::nearSomething(){
+//assuming a is penelope and b is wall
+Actor* Actor::objectOverlap(double x, double y){
     std::list<Actor*>::iterator it=world->getActors();
     while(it!=world->getEnd()){
-        if((this->getX()!=(*it)->getX() && this->getY()!=(*it)->getY()))
-           if(haveCollided(this,(*it)))
-               return(*it);
+        if(this!=(*it)){
+            if(this->boundingBox!=16&& (*it)->boundingBox==16){
+                if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
+                   y<=(*it)->getY()+15 && y+15>=(*it)->getY())
+                    return(*it);
+            }
+            else if(this->boundingBox==10 && (*it)->boundingBox==10)
+                if((x-(*it)->getX())*(x-(*it)->getX())+
+                   (y-(*it)->getY())*(y-(*it)->getY())<=
+                   (this->boundingBox)*(this->boundingBox))
+                    return(*it);
+        }
         it++;
     }
     return(nullptr);
 }
+bool Actor::willHitObstacle(double x, double y){
+    Actor* temp=this->objectOverlap(x,y);
+    return(temp!=nullptr && temp->isObs());
+}
 
 Wall::Wall(StudentWorld* sw, int x, int y)
 :Actor(false,false,true,sw,IID_WALL,x,y,0,0){
-    setBoundingBox(256);
+    setBoundingBox(16);
 }
-void Wall::doSomething(){
-    Actor* other=this->nearSomething();
-    if(other==nullptr)
-        return;
-    
-}
+void Wall::doSomething(){}
 
 Exit::Exit(StudentWorld* sw, int x, int y)
 :Actor(false,false,false,sw,IID_EXIT,x,y,0,1){}
 void Exit::doSomething(){
-    Actor* other=this->nearSomething();
+    Actor* other=this->objectOverlap(getX(),getY());
     if(other==nullptr)
         return;
     if(other->canBeInf()){
@@ -60,8 +64,6 @@ void Exit::doSomething(){
         }
     }
 }
-
-
 
 Damageable::Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 :Actor(inf, true, obs, sw, id, x, y, dir, dep)
@@ -98,16 +100,21 @@ void Penelope::doSomething(){
         switch (move)
         {
             case KEY_PRESS_LEFT:
-                moveTo(getX()-1,getY());
+                if(!willHitObstacle(getX()-1,getY()))
+                    moveTo(getX()-1,getY());
                 break;
             case KEY_PRESS_RIGHT:
+                if(!willHitObstacle(getX()+1,getY()))
                 moveTo(getX()+1,getY());
                 break;
             case KEY_PRESS_DOWN:
+                if(!willHitObstacle(getX(),getY()-1))
                 moveTo(getX(),getY()-1);
                 break;
             case KEY_PRESS_UP:
+                if(!willHitObstacle(getX(),getY()+1))
                 moveTo(getX(),getY()+1);
+                break;
             case KEY_PRESS_SPACE:
                 deployFlame();
                 break;
