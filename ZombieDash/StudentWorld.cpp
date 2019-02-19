@@ -54,7 +54,7 @@ int StudentWorld::init()
         int citizens=0;
         for(int r=0;r<16;r++){
             for(int c=0;c<16;c++){
-                Level::MazeEntry ge = l.getContentsOf(r,c);
+                Level::MazeEntry ge = l.getContentsOf(c,r);
                 switch(ge){
                     case Level::empty:
                         break;
@@ -109,8 +109,10 @@ int StudentWorld::move()
     // Notice that the return value GWSTATUS_PLAYER_DIED will cause our framework to end the current level.
     list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
-        
+        (*it)->doSomething();
+        it++;
     }
+    getRidOfDead();
     return GWSTATUS_CONTINUE_GAME;
 }
 

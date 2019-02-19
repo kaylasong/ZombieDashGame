@@ -9,7 +9,7 @@ class StudentWorld;
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 class Actor: public GraphObject{
 public:
-    Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep);
+    Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
     bool haveCollided(Actor* a, Actor* b);
     Actor* nearSomething();
@@ -18,6 +18,7 @@ public:
     bool canBeInf(){return(canBeInfected);}
     bool canBeDes(){return(canBeDestroyed);}
     bool isDead(){return(m_isDead);}
+    bool isObs(){return(isObstacle);}
     void setBoundingBox(int x){boundingBox=x;}
     StudentWorld* getWorld(){return(world);}
 private:
@@ -25,6 +26,7 @@ private:
     bool canBeInfected;
     bool canBeDestroyed;
     bool m_isDead;
+    bool isObstacle;
     StudentWorld* world;
 };
 
@@ -45,7 +47,7 @@ public:
 
 class Damageable: public Actor{
 public:
-    Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep);
+    Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
 };
 
 //////////////
@@ -66,9 +68,9 @@ public:
     void setVaccines(int x);
     void setFlames(int x);
     void setLandmines(int x);
-    bool deployVaccine();
-    bool deployFlame();
-    bool deployLandmine();
+    void deployVaccine();
+    void deployFlame();
+    void deployLandmine();
 private:
     int numVaccines;
     int numFlames;

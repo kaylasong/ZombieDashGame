@@ -2,18 +2,19 @@
 #include "StudentWorld.h"
 #include <list>
 
-//implement: Actor::haveCollided, all the doSomethings, all the deploys
+//implement:all the doSomethings, all the deploys
 
 
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 //class StudentWorld;
 //// Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
-Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
+Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 :GraphObject(id, x, y, dir, dep){
     canBeInfected=inf;
     canBeDestroyed=des;
     world=sw;
     m_isDead=false;
+    isObstacle=obs;
     boundingBox=100;
 }
 bool Actor::haveCollided(Actor* a, Actor* b){
@@ -32,10 +33,9 @@ Actor* Actor::nearSomething(){
     }
     return(nullptr);
 }
-//implement haveCollided
 
 Wall::Wall(StudentWorld* sw, int x, int y)
-:Actor(false,false,sw,11,x,y,0,0){
+:Actor(false,false,true,sw,IID_WALL,x,y,0,0){
     setBoundingBox(256);
 }
 void Wall::doSomething(){
@@ -46,7 +46,7 @@ void Wall::doSomething(){
 }
 
 Exit::Exit(StudentWorld* sw, int x, int y)
-:Actor(false,false,sw,10,x,y,0,1){}
+:Actor(false,false,false,sw,IID_EXIT,x,y,0,1){}
 void Exit::doSomething(){
     Actor* other=this->nearSomething();
     if(other==nullptr)
@@ -63,12 +63,12 @@ void Exit::doSomething(){
 
 
 
-Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
-:Actor(inf, true, sw, id, x, y, dir, dep)
+Damageable::Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
+:Actor(inf, true, obs, sw, id, x, y, dir, dep)
 {}
 
 Infectable::Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep)
-:Damageable(true, sw, id, x, y, dir, dep){
+:Damageable(true, true, sw, id, x, y, dir, dep){
     infectedCount=-1;
 }
 void Infectable::incrementIC(){
@@ -85,35 +85,67 @@ void Infectable::getInfected(){
 }
 
 Penelope::Penelope(StudentWorld* sw, int x, int y)
-:Infectable(sw,0,x,y,0,0){
+:Infectable(sw,IID_PLAYER,x,y,0,0){
     numVaccines,numFlames,numLandmines=0;
 }
 void Penelope::doSomething(){
-    if(this->isDead())
+    if(this->isDead()){
         return;
+    }
+    incrementIC();
+    int move;
+    if (getWorld()->getKey(move)){
+        switch (move)
+        {
+            case KEY_PRESS_LEFT:
+                moveTo(getX()-1,getY());
+                break;
+            case KEY_PRESS_RIGHT:
+                moveTo(getX()+1,getY());
+                break;
+            case KEY_PRESS_DOWN:
+                moveTo(getX(),getY()-1);
+                break;
+            case KEY_PRESS_UP:
+                moveTo(getX(),getY()+1);
+            case KEY_PRESS_SPACE:
+                deployFlame();
+                break;
+            case KEY_PRESS_TAB:
+                deployLandmine();
+                break;
+            case KEY_PRESS_ENTER:
+                deployVaccine();
+                break;
+        }
+    }
+    
 }
+void Penelope::deployFlame(){}
+void Penelope::deployVaccine(){}
+void Penelope::deployLandmine(){}
 //deploy functions
 Citizen::Citizen(StudentWorld* sw, int x, int y)
-:Infectable(sw,2,x,y,0,0){}
+:Infectable(sw,IID_CITIZEN,x,y,0,0){}
 void Citizen::doSomething(){}
 
 ///////////////
 Goodie::Goodie(StudentWorld* sw, int id, int x, int y)
-:Damageable(false,sw,id,x,y,0,1){}
+:Damageable(false,false,sw,id,x,y,0,1){}
 VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y)
-:Goodie(sw,7,x,y){}
+:Goodie(sw,IID_VACCINE_GOODIE,x,y){}
 void VaccineGoodie::doSomething(){}
 GasCanGoodie::GasCanGoodie(StudentWorld* sw, int x, int y)
-:Goodie(sw,8,x,y){}
+:Goodie(sw,IID_GAS_CAN_GOODIE,x,y){}
 void GasCanGoodie::doSomething(){}
 LandmineGoodie::LandmineGoodie(StudentWorld* sw, int x, int y)
-:Goodie(sw,9,x,y){}
+:Goodie(sw,IID_LANDMINE_GOODIE,x,y){}
 void LandmineGoodie::doSomething(){}
 
 /////////////////
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Zombie::Zombie(StudentWorld* sw, int x, int y)
-:Damageable(false,sw,1,x,y,0,0){}
+:Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){}
 void Zombie::vomit(Infectable* target){
     target->getInfected();
 }
@@ -131,17 +163,17 @@ void SmartZombie::doSomething(){}
 ///////////////////////////////////
 //Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Damaging::Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y,int dir, int dep)
-:Actor(inf,des,sw,id,x,y,dir,dep){}
+:Actor(inf,des,false, sw,id,x,y,dir,dep){}
 void Damaging::damage(Damageable* target){
     target->kill();
 }
 
 Pit::Pit(StudentWorld* sw, int x, int y)
-:Damaging(false,false,sw,5,x,y,0,0){}
+:Damaging(false,false,sw,IID_PIT,x,y,0,0){}
 void Pit::doSomething(){}
 
 Landmine::Landmine(StudentWorld* sw, int x, int y)
-:Damaging(false,false,sw,6,x,y,0,0){}
+:Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){}
 void Landmine::doSomething(){}
 
 Projectile::Projectile(StudentWorld* sw, int id, int x, int y, int dir)
@@ -157,13 +189,13 @@ void Projectile::decST(){
 }
 
 Flame::Flame(StudentWorld* sw, int x, int y, int dir)
-:Projectile(sw,3,x,y,dir){}
+:Projectile(sw,IID_FLAME,x,y,dir){}
 void Flame::doSomething(){
     this->decST();
 }
 
 Vomit::Vomit(StudentWorld* sw, int x, int y, int dir)
-:Projectile(sw,4,x,y,dir){}
+:Projectile(sw,IID_VOMIT,x,y,dir){}
 void Vomit::doSomething(){
     this->decST();
 }
