@@ -91,7 +91,6 @@ public:
 class Goodie: public Damageable{
 public:
     Goodie(StudentWorld* sw, int id, int x, int y);
-    void editPenelope();
 };
 
 class VaccineGoodie: public Goodie{

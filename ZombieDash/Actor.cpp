@@ -18,9 +18,9 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     isObstacle=obs;
     boundingBox=10;
 }
-//assuming a is penelope and b is wall
+
 Actor* Actor::objectOverlap(double x, double y){
-    std::list<Actor*>::iterator it=world->getActors();
+    std::list<Actor*>::iterator it=world->getActors();    
     while(it!=world->getEnd()){
         if(this!=(*it)){
             if(this->boundingBox!=16&& (*it)->boundingBox==16){
@@ -56,11 +56,13 @@ void Exit::doSomething(){
     if(other==nullptr)
         return;
     if(other->canBeInf()){
-        if(!getWorld()->isPenelope(other)){
-            //let them in
+        if(getWorld()->getPenelope()!=other){
+            this->getWorld()->increaseScore(500);
+            other->kill();
         }
         else if(getWorld()->getNumCitizens()==0){
-            //let penelope in
+            this->getWorld()->setGameStatus(GWSTATUS_FINISHED_LEVEL);
+            this->getWorld()->nextLevel();
         }
     }
 }
@@ -92,6 +94,8 @@ Penelope::Penelope(StudentWorld* sw, int x, int y)
 }
 void Penelope::doSomething(){
     if(this->isDead()){
+        this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
+        this->getWorld()->playSound(SOUND_PLAYER_DIE);
         return;
     }
     incrementIC();
@@ -105,15 +109,15 @@ void Penelope::doSomething(){
                 break;
             case KEY_PRESS_RIGHT:
                 if(!willHitObstacle(getX()+1,getY()))
-                moveTo(getX()+1,getY());
+                    moveTo(getX()+1,getY());
                 break;
             case KEY_PRESS_DOWN:
                 if(!willHitObstacle(getX(),getY()-1))
-                moveTo(getX(),getY()-1);
+                    moveTo(getX(),getY()-1);
                 break;
             case KEY_PRESS_UP:
                 if(!willHitObstacle(getX(),getY()+1))
-                moveTo(getX(),getY()+1);
+                    moveTo(getX(),getY()+1);
                 break;
             case KEY_PRESS_SPACE:
                 deployFlame();

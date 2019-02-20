@@ -20,9 +20,8 @@ public:
     ~StudentWorld();
     void addItem(Actor* add);
     void getRidOfDead(); 
-    bool isPenelope(Actor* other){
-        return(other==penelope);
-    }
+    Actor* getPenelope(){return(penelope);};
+    
     int getNumCitizens(){
         return(numCitizens);
     }
@@ -32,11 +31,23 @@ public:
     std::list<Actor*>::iterator getEnd(){
         return(actors.end());
     }
+    void setGameStatus(int x){
+        gameStatus=x;
+    }
+    int getGameStatus(){
+        return(gameStatus);
+    }
+    void nextLevel(){
+        whichLevel++; 
+    }
 
 private:
     Penelope* penelope;
     std::list<Actor*> actors;
     int numCitizens;
+    int gameStatus;
+    int whichLevel=0;
+    std::string levels[6]={"level01.txt","level02.txt","level03.txt","level04.txt","level05.txt","level06.txt"};
 };
 
 #endif // STUDENTWORLD_H_
