@@ -20,7 +20,7 @@ public:
     ~StudentWorld();
     void addItem(Actor* add);
     void getRidOfDead(); 
-    Actor* getPenelope(){return(penelope);};
+    Penelope* getPenelope(){return(penelope);};
     
     int getNumCitizens(){
         return(numCitizens);

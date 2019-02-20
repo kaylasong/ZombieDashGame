@@ -132,9 +132,39 @@ void Penelope::doSomething(){
     }
     
 }
-void Penelope::deployFlame(){}
-void Penelope::deployVaccine(){}
-void Penelope::deployLandmine(){}
+void Penelope::deployFlame(){
+    if(numFlames==0)
+        return;
+    getWorld()->playSound(SOUND_PLAYER_FIRE);
+    switch(this->getDirection()){
+        case up:
+            for(int i=0;i<3;i++)
+                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up));
+            break;
+        case down:
+            for(int i=0;i<3;i++)
+                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-i*SPRITE_HEIGHT, down));
+            break;
+        case right:
+            for(int i=0;i<3;i++)
+                getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), right));
+            break;
+        case left:
+            for(int i=0;i<3;i++)
+                getWorld()->addItem(new Flame(getWorld(),this->getX()+i*SPRITE_WIDTH,this->getY(), left));
+            break;
+    }
+}
+void Penelope::deployVaccine(){
+    if(numVaccines==0 || getIC()==-1)
+        return;
+    getHealed();
+}
+void Penelope::deployLandmine(){
+    if(numLandmines==0)
+        return;
+    
+}
 //deploy functions
 Citizen::Citizen(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_CITIZEN,x,y,0,0){}
@@ -148,7 +178,17 @@ VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y)
 void VaccineGoodie::doSomething(){}
 GasCanGoodie::GasCanGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_GAS_CAN_GOODIE,x,y){}
-void GasCanGoodie::doSomething(){}
+void GasCanGoodie::doSomething(){
+    Actor* other=objectOverlap(getX(),getY());
+    if(other==nullptr)
+        return;
+    if(other==getWorld()->getPenelope()){
+        getWorld()->getPenelope()->addFlames(5);
+        getWorld()->playSound(SOUND_GOT_GOODIE);
+        getWorld()->increaseScore(50);
+        kill();
+    }
+}
 LandmineGoodie::LandmineGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_LANDMINE_GOODIE,x,y){}
 void LandmineGoodie::doSomething(){}
@@ -207,6 +247,9 @@ void Flame::doSomething(){
 
 Vomit::Vomit(StudentWorld* sw, int x, int y, int dir)
 :Projectile(sw,IID_VOMIT,x,y,dir){}
+void Vomit::infect(Infectable* target){
+    target->getInfected();
+}
 void Vomit::doSomething(){
     this->decST();
 }

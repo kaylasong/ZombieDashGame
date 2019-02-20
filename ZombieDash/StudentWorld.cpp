@@ -110,7 +110,7 @@ int StudentWorld::move()
         (*it)->doSomething();
         it++;
     }
-    //getRidOfDead();
+    getRidOfDead();
     return gameStatus;
 }
 

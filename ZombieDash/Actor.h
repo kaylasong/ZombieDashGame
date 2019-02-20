@@ -58,8 +58,10 @@ public:
 class Infectable: public Damageable{
 public:
     Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep);
+    int getIC(){return(infectedCount);}
     void incrementIC();
     void getInfected();
+    void getHealed(){infectedCount=-1;}
 private:
     int infectedCount;
 };
@@ -69,9 +71,9 @@ public:
     Penelope(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     //all the goodie thingies
-    void setVaccines(int x);
-    void setFlames(int x);
-    void setLandmines(int x);
+    void addVaccines(int x){numVaccines+=x;}
+    void addFlames(int x){numFlames+=x;}
+    void addLandmines(int x){numLandmines+=x;}
     void deployVaccine();
     void deployFlame();
     void deployLandmine();
@@ -168,6 +170,7 @@ class Vomit: public Projectile{
 public:
     Vomit(StudentWorld* sw, int x, int y, int dir);
     virtual void doSomething();
+    void infect(Infectable* target);
 };
 
 
