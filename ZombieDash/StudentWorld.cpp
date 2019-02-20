@@ -18,6 +18,8 @@ void StudentWorld::getRidOfDead(){
     list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
         if((*it)!=nullptr && (*it)->isDead()){
+            if((*it)->canBeInf())
+                numCitizens--;
             delete(*it);
             it=actors.erase(it);
         }
@@ -55,6 +57,7 @@ int StudentWorld::init()
                     case Level::empty:
                         break;
                     case Level::smart_zombie:
+                        playSound(SOUND_ZOMBIE_BORN);
                         actors.push_back(new SmartZombie(this,c*16,r*16));
                         break;
                     case Level::dumb_zombie:
@@ -62,6 +65,7 @@ int StudentWorld::init()
                             actors.push_back(new DumbZombie(this,c*16,r*16,true));
                         else
                             actors.push_back(new DumbZombie(this,c*16,r*16,false));
+                        playSound(SOUND_ZOMBIE_BORN);
                         break;
                     case Level::player:
                         penelope=new Penelope(this,c*16,r*16);

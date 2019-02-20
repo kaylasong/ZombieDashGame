@@ -23,7 +23,7 @@ Actor* Actor::objectOverlap(double x, double y){
     std::list<Actor*>::iterator it=world->getActors();    
     while(it!=world->getEnd()){
         if(this!=(*it)){
-            if(this->boundingBox!=16&& (*it)->boundingBox==16){
+            if(this->boundingBox!=16 && (*it)->boundingBox==16){
                 if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
                    y<=(*it)->getY()+15 && y+15>=(*it)->getY())
                     return(*it);
@@ -90,7 +90,9 @@ void Infectable::getInfected(){
 
 Penelope::Penelope(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_PLAYER,x,y,0,0){
-    numVaccines,numFlames,numLandmines=0;
+    numVaccines=0; 
+    numFlames=0;
+    numLandmines=0;
 }
 void Penelope::doSomething(){
     if(this->isDead()){
@@ -104,19 +106,27 @@ void Penelope::doSomething(){
         switch (move)
         {
             case KEY_PRESS_LEFT:
-                if(!willHitObstacle(getX()-1,getY()))
+                if(getDirection()!=left)
+                    setDirection(left);
+                else if(!willHitObstacle(getX()-1,getY()))
                     moveTo(getX()-1,getY());
                 break;
             case KEY_PRESS_RIGHT:
-                if(!willHitObstacle(getX()+1,getY()))
+                if(getDirection()!=right)
+                    setDirection(right);
+                else if(!willHitObstacle(getX()+1,getY()))
                     moveTo(getX()+1,getY());
                 break;
             case KEY_PRESS_DOWN:
-                if(!willHitObstacle(getX(),getY()-1))
+                if(getDirection()!=down)
+                    setDirection(down);
+                else if(!willHitObstacle(getX(),getY()-1))
                     moveTo(getX(),getY()-1);
                 break;
             case KEY_PRESS_UP:
-                if(!willHitObstacle(getX(),getY()+1))
+                if(getDirection()!=up)
+                    setDirection(up);
+                else if(!willHitObstacle(getX(),getY()+1))
                     moveTo(getX(),getY()+1);
                 break;
             case KEY_PRESS_SPACE:
@@ -143,27 +153,30 @@ void Penelope::deployFlame(){
             break;
         case down:
             for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-i*SPRITE_HEIGHT, down));
+                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down));
             break;
         case right:
             for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), right));
+                getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right));
             break;
         case left:
             for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX()+i*SPRITE_WIDTH,this->getY(), left));
+                getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left));
             break;
     }
+    numFlames--;
 }
 void Penelope::deployVaccine(){
     if(numVaccines==0 || getIC()==-1)
         return;
     getHealed();
+    numVaccines--;
 }
 void Penelope::deployLandmine(){
     if(numLandmines==0)
         return;
-    
+    numLandmines--;
+    getWorld()->addItem(new Landmine(getWorld(),getX(),getY()));
 }
 //deploy functions
 Citizen::Citizen(StudentWorld* sw, int x, int y)
@@ -175,7 +188,17 @@ Goodie::Goodie(StudentWorld* sw, int id, int x, int y)
 :Damageable(false,false,sw,id,x,y,0,1){}
 VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_VACCINE_GOODIE,x,y){}
-void VaccineGoodie::doSomething(){}
+void VaccineGoodie::doSomething(){
+    Actor*other=objectOverlap(getX(),getY());
+    if(other==nullptr)
+        return;
+    if(other==getWorld()->getPenelope()){
+        getWorld()->getPenelope()->addVaccines(1);
+        getWorld()->playSound(SOUND_GOT_GOODIE);
+        getWorld()->increaseScore(50);
+        kill();
+    }
+}
 GasCanGoodie::GasCanGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_GAS_CAN_GOODIE,x,y){}
 void GasCanGoodie::doSomething(){
@@ -191,7 +214,17 @@ void GasCanGoodie::doSomething(){
 }
 LandmineGoodie::LandmineGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_LANDMINE_GOODIE,x,y){}
-void LandmineGoodie::doSomething(){}
+void LandmineGoodie::doSomething(){
+    Actor*other=objectOverlap(getX(),getY());
+    if(other==nullptr)
+        return;
+    if(other==getWorld()->getPenelope()){
+        getWorld()->getPenelope()->addLandmines(2);
+        getWorld()->playSound(SOUND_GOT_GOODIE);
+        getWorld()->increaseScore(50);
+        kill();
+    }
+}
 
 /////////////////
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
@@ -215,17 +248,35 @@ void SmartZombie::doSomething(){}
 //Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Damaging::Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y,int dir, int dep)
 :Actor(inf,des,false, sw,id,x,y,dir,dep){}
-void Damaging::damage(Damageable* target){
-    target->kill();
-}
 
 Pit::Pit(StudentWorld* sw, int x, int y)
 :Damaging(false,false,sw,IID_PIT,x,y,0,0){}
-void Pit::doSomething(){}
+void Pit::doSomething(){
+    Actor* other=objectOverlap(getX(),getY());
+    if(other==nullptr)
+        return;
+    if(other->canBeDes()){
+        other->kill();
+    }
+}
 
 Landmine::Landmine(StudentWorld* sw, int x, int y)
 :Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){}
-void Landmine::doSomething(){}
+void Landmine::doSomething(){
+    Actor* other=objectOverlap(getX(),getY());
+    if(other==nullptr)
+        return;
+    if(other->canBeDes()){
+        other->kill();
+        getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
+        getWorld()->addItem(new Pit(getWorld(),getX(),getY()));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),left));
+        getWorld()->addItem(new Flame(getWorld(),getX()+2*SPRITE_WIDTH,getY(),right));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-2*SPRITE_WIDTH,down));
+        kill();
+    }
+}
 
 Projectile::Projectile(StudentWorld* sw, int id, int x, int y, int dir)
 :Damaging(false,false,sw,id,x,y,dir,0){
@@ -242,6 +293,12 @@ void Projectile::decST(){
 Flame::Flame(StudentWorld* sw, int x, int y, int dir)
 :Projectile(sw,IID_FLAME,x,y,dir){}
 void Flame::doSomething(){
+    if(isDead())
+        return;
+    Actor* other=objectOverlap(getX(),getY());
+    if(other!=nullptr && other->canBeDes()){
+        other->kill();
+    }
     this->decST();
 }
 

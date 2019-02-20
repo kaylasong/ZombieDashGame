@@ -137,7 +137,6 @@ public:
 class Damaging: public Actor{
 public:
     Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y, int dir, int dep);
-    virtual void damage(Damageable* target);
 };
 
 class Pit: public Damaging{
@@ -156,6 +155,7 @@ class Projectile: public Damaging{
 public:
     Projectile(StudentWorld* sw, int id, int x, int y, int dir);
     void decST();
+    int getScreenTime(){return(screenTime);}
 private:
     int screenTime;
 };
