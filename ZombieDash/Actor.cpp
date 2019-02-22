@@ -16,37 +16,41 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     world=sw;
     m_isDead=false;
     isObstacle=obs;
-    boundingBox=10;
 }
 
 Actor* Actor::objectOverlap(double x, double y){
     std::list<Actor*>::iterator it=world->getActors();    
     while(it!=world->getEnd()){
         if(this!=(*it)){
-            if(this->boundingBox!=16 && (*it)->boundingBox==16){
-                if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
-                   y<=(*it)->getY()+15 && y+15>=(*it)->getY())
-                    return(*it);
-            }
-            else if(this->boundingBox==10 && (*it)->boundingBox==10)
-                if((x-(*it)->getX())*(x-(*it)->getX())+
-                   (y-(*it)->getY())*(y-(*it)->getY())<=
-                   (this->boundingBox)*(this->boundingBox))
-                    return(*it);
+            if((x-(*it)->getX())*(x-(*it)->getX())+
+               (y-(*it)->getY())*(y-(*it)->getY())<=100)
+                return(*it);
         }
         it++;
     }
     return(nullptr);
 }
+
 bool Actor::willHitObstacle(double x, double y){
-    Actor* temp=this->objectOverlap(x,y);
+    Actor* temp=nullptr;
+    std::list<Actor*>::iterator it=world->getActors();
+    while(it!=world->getEnd()){
+        if(this!=(*it)){
+            if((*it)->isObs()){
+                if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
+                   y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
+                    temp=(*it);
+                    break;
+                }
+            }
+        }
+        it++;
+    }
     return(temp!=nullptr && temp->isObs());
 }
 
 Wall::Wall(StudentWorld* sw, int x, int y)
-:Actor(false,false,true,sw,IID_WALL,x,y,0,0){
-    setBoundingBox(16);
-}
+:Actor(false,false,true,sw,IID_WALL,x,y,0,0){}
 void Wall::doSomething(){}
 
 Exit::Exit(StudentWorld* sw, int x, int y)
@@ -91,7 +95,7 @@ void Infectable::getInfected(){
 
 Penelope::Penelope(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_PLAYER,x,y,0,0){
-    numVaccines=0; 
+    numVaccines=0;
     numFlames=0;
     numLandmines=0;
 }
@@ -153,29 +157,29 @@ void Penelope::deployFlame(){
         case up:
             for(int i=0;i<3;i++){
                 Actor* other=objectOverlap(this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT);
-                if(other==nullptr || other->getBoundingBox()!=16)
-                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up));
+                if(other==nullptr || (other->canBeDes() && other->isObs()))
+                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up,false));
             }
             break;
         case down:
             for(int i=0;i<3;i++){
                 Actor* other=objectOverlap(this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT);
-                if(other==nullptr || other->getBoundingBox()!=16)
-                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down));
+                if(other==nullptr || (other->canBeDes() && other->isObs()))
+                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down,false));
             }
             break;
         case right:
             for(int i=0;i<3;i++){
                 Actor* other=objectOverlap(this->getX()+(i+1)*SPRITE_WIDTH,this->getY());
-                if(other==nullptr || other->getBoundingBox()!=16)
-                    getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right));
+                if(other==nullptr || (other->canBeDes() && other->isObs()))
+                    getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right,false));
             }
             break;
         case left:
             for(int i=0;i<3;i++){
                 Actor* other=objectOverlap(this->getX()-(i+1)*SPRITE_WIDTH,this->getY());
-                if(other==nullptr || other->getBoundingBox()!=16)
-                    getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left));
+                if(other==nullptr || (other->canBeDes() && other->isObs()))
+                    getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left,false));
             }
                 break;
     }
@@ -245,19 +249,113 @@ void LandmineGoodie::doSomething(){
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Zombie::Zombie(StudentWorld* sw, int x, int y)
 :Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){}
-void Zombie::vomit(Infectable* target){
-    target->getInfected();
-    getWorld()->playSound(SOUND_ZOMBIE_BORN);
+bool Zombie::vomit(double x, double y, int dir){
+    getWorld()->addItem(new Vomit(getWorld(),x, y,dir));
+    getWorld()->playSound(SOUND_ZOMBIE_VOMIT);
+    return(true);
 }
 Zombie::~Zombie(){
     getWorld()->playSound(SOUND_ZOMBIE_DIE);
+}
+void Zombie::pickNewMovementPlan(){
+    moveDis=randInt(3,10);
+    int rand=randInt(0,3);
+    switch(rand){
+        case 0:
+            setDirection(up);
+            break;
+        case 1:
+            setDirection(down);
+            break;
+        case 2:
+            setDirection(left);
+            break;
+        case 3:
+            setDirection(right);
+            break;
+    }
 }
 
 DumbZombie::DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc)
 :Zombie(sw,x,y){
     holdsVaccine=holdsVacc;
+    m_canMove=false;
 }
-void DumbZombie::doSomething(){}
+DumbZombie::~DumbZombie(){
+    getWorld()->increaseScore(1000);
+}
+void DumbZombie::doSomething(){
+    toggleCM();
+    if(isDead() || !m_canMove)
+        return;
+
+    int dir=getDirection();
+    Actor* other=nullptr;
+    switch(dir){
+        case right:
+            other=objectOverlap(getX()+SPRITE_WIDTH,getY());
+            if(other!=nullptr && other->canBeInf()){
+                vomit(getX()+SPRITE_WIDTH,getY(), right);
+                return;
+            }
+            break;
+        case left:
+            other=objectOverlap(getX()-SPRITE_WIDTH,getY());
+            if(other!=nullptr && other->canBeInf()){
+                vomit(getX()-SPRITE_WIDTH,getY(), left);
+                return;
+            }
+            break;
+        case down:
+            other=objectOverlap(getX(),getY()-SPRITE_HEIGHT);
+            if(other!=nullptr && other->canBeInf()){
+                vomit(getX()-SPRITE_WIDTH,getY(), down);
+                return;
+            }
+            break;
+        case up:
+            other=objectOverlap(getX(),getY()+SPRITE_HEIGHT);
+            if(other!=nullptr && other->canBeInf()){
+                vomit(getX()-SPRITE_WIDTH,getY(), up);
+                return;
+            }
+            break;
+    }
+    if(getMD()==0)
+        pickNewMovementPlan();
+    int dir2=getDirection();
+    switch(dir2){
+        case right:
+            if(!willHitObstacle(getX()+1,getY())){
+                moveTo(getX()+1, getY());
+                setMD(getMD()-1);
+                return;
+            }
+            break;
+        case left:
+            if(!willHitObstacle(getX()-1,getY())){
+                moveTo(getX()-1, getY());
+                setMD(getMD()-1);
+                return;
+            }
+            break;
+        case down:
+            if(!willHitObstacle(getX(),getY()-1)){
+                moveTo(getX(), getY()-1);
+                setMD(getMD()-1);
+                return;
+            }
+            break;
+        case up:
+            if(!willHitObstacle(getX(),getY()+1)){
+                moveTo(getX(), getY()+1);
+                setMD(getMD()-1);
+                return;
+            }
+            break;
+    }
+    setMD(0);
+}
 
 SmartZombie::SmartZombie(StudentWorld* sw, int x, int y)
 :Zombie(sw,x,y){}
@@ -280,21 +378,34 @@ void Pit::doSomething(){
 }
 
 Landmine::Landmine(StudentWorld* sw, int x, int y)
-:Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){}
+:Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){
+    activationTime=0;
+}
 Landmine::~Landmine(){
     getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
 }
+void Landmine::incrementActivationTime(){
+    activationTime++;
+}
 void Landmine::doSomething(){
+    if(getActivationTime()<30){
+        incrementActivationTime();
+        return;
+    }
     Actor* other=objectOverlap(getX(),getY());
     if(other==nullptr)
         return;
     if(other->canBeDes()){
         other->kill();
-        getWorld()->addItem(new Pit(getWorld(),getX(),getY()));
-        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),left));
-        getWorld()->addItem(new Flame(getWorld(),getX()+2*SPRITE_WIDTH,getY(),right));
-        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up));
-        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-2*SPRITE_WIDTH,down));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),left,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY(),right,false));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,down,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()+SPRITE_WIDTH,135,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()-SPRITE_WIDTH,180+45,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()+SPRITE_WIDTH,45,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()-SPRITE_WIDTH,360-45,false));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY(),right, true));
         kill();
     }
 }
@@ -311,8 +422,14 @@ void Projectile::decST(){
     screenTime--;
 }
 
-Flame::Flame(StudentWorld* sw, int x, int y, int dir)
-:Projectile(sw,IID_FLAME,x,y,dir){}
+Flame::Flame(StudentWorld* sw, int x, int y, int dir, bool ilf)
+:Projectile(sw,IID_FLAME,x,y,dir){
+    isLandmineFlame=ilf;
+}
+Flame::~Flame(){
+    if(isLandmineFlame)
+        getWorld()->addItem(new Pit(getWorld(),getX(),getY()));
+}
 void Flame::doSomething(){
     if(isDead())
         return;
@@ -329,5 +446,10 @@ void Vomit::infect(Infectable* target){
     target->getInfected();
 }
 void Vomit::doSomething(){
+    if(isDead())
+        return;
+    Actor* other=objectOverlap(getX(),getY());
+    if(other!=nullptr&&other->canBeInf())
+        other->getInfected();
     this->decST();
 }

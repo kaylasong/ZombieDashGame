@@ -22,11 +22,10 @@ public:
     bool canBeDes(){return(canBeDestroyed);}
     bool isDead(){return(m_isDead);}
     bool isObs(){return(isObstacle);}
-    void setBoundingBox(int x){boundingBox=x;}
     StudentWorld* getWorld(){return(world);}
-    int getBoundingBox(){return(boundingBox);}
+    
+    virtual void getInfected(){}
 private:
-    int boundingBox;
     bool canBeInfected;
     bool canBeDestroyed;
     bool m_isDead;
@@ -118,15 +117,23 @@ class Zombie: public Damageable{
 public:
     ~Zombie();
     Zombie(StudentWorld* sw, int x, int y);
-    void vomit(Infectable* target);
+    bool vomit(double x, double y, int dir);
+    void pickNewMovementPlan();
+    int getMD(){return(moveDis);}
+    void setMD(int x){moveDis=x;}
+private:
+    int moveDis;
 };
 
 class DumbZombie: public Zombie{
 public:
+    ~DumbZombie();
     DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc);
     virtual void doSomething();
+    void toggleCM(){m_canMove=!m_canMove;}
 private:
     bool holdsVaccine;
+    bool m_canMove;
 };
 
 class SmartZombie: public Zombie{
@@ -152,6 +159,10 @@ public:
     ~Landmine();
     Landmine(StudentWorld* sw, int x, int y);
     virtual void doSomething();
+    void incrementActivationTime();
+    int getActivationTime(){return(activationTime);}
+private:
+    int activationTime;
 };
 
 class Projectile: public Damaging{
@@ -165,8 +176,12 @@ private:
 
 class Flame: public Projectile{
 public:
-    Flame(StudentWorld* sw, int x, int y, int dir);
+    ~Flame();
+    Flame(StudentWorld* sw, int x, int y, int dir, bool ilf);
     virtual void doSomething();
+    bool getIsLandmineFlame(){return(isLandmineFlame);}
+private:
+    bool isLandmineFlame;
 };
 
 class Vomit: public Projectile{
