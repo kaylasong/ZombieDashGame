@@ -57,7 +57,6 @@ int StudentWorld::init()
                     case Level::empty:
                         break;
                     case Level::smart_zombie:
-                        playSound(SOUND_ZOMBIE_BORN);
                         actors.push_back(new SmartZombie(this,c*16,r*16));
                         break;
                     case Level::dumb_zombie:
@@ -65,7 +64,6 @@ int StudentWorld::init()
                             actors.push_back(new DumbZombie(this,c*16,r*16,true));
                         else
                             actors.push_back(new DumbZombie(this,c*16,r*16,false));
-                        playSound(SOUND_ZOMBIE_BORN);
                         break;
                     case Level::player:
                         penelope=new Penelope(this,c*16,r*16);
@@ -105,7 +103,8 @@ int StudentWorld::init()
 
 int StudentWorld::move()
 {
-
+    if(whichLevel==6)
+        return(GWSTATUS_PLAYER_WON);
     // This code is here merely to allow the game to build, run, and terminate after you hit enter.
     // Notice that the return value GWSTATUS_PLAYER_DIED will cause our framework to end the current level.
     penelope->doSomething();

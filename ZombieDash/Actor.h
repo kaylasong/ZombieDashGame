@@ -68,6 +68,7 @@ private:
 
 class Penelope: public Infectable{
 public:
+    ~Penelope();
     Penelope(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     //all the goodie thingies
@@ -115,6 +116,7 @@ public:
 ///////////////
 class Zombie: public Damageable{
 public:
+    ~Zombie();
     Zombie(StudentWorld* sw, int x, int y);
     void vomit(Infectable* target);
 };
@@ -147,6 +149,7 @@ public:
 
 class Landmine: public Damaging{
 public:
+    ~Landmine();
     Landmine(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };

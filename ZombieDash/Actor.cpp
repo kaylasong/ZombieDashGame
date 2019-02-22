@@ -62,6 +62,7 @@ void Exit::doSomething(){
         }
         else if(getWorld()->getNumCitizens()==0){
             this->getWorld()->setGameStatus(GWSTATUS_FINISHED_LEVEL);
+            this->getWorld()->playSound(SOUND_LEVEL_FINISHED);
             this->getWorld()->nextLevel();
         }
     }
@@ -94,13 +95,15 @@ Penelope::Penelope(StudentWorld* sw, int x, int y)
     numFlames=0;
     numLandmines=0;
 }
+Penelope::~Penelope(){
+    getWorld()->playSound(SOUND_PLAYER_DIE);
+}
 void Penelope::doSomething(){
+    incrementIC();
     if(this->isDead()){
         this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
-        this->getWorld()->playSound(SOUND_PLAYER_DIE);
         return;
     }
-    incrementIC();
     int move;
     if (getWorld()->getKey(move)){
         switch (move)
@@ -108,26 +111,26 @@ void Penelope::doSomething(){
             case KEY_PRESS_LEFT:
                 if(getDirection()!=left)
                     setDirection(left);
-                else if(!willHitObstacle(getX()-1,getY()))
-                    moveTo(getX()-1,getY());
+                else if(!willHitObstacle(getX()-4,getY()))
+                    moveTo(getX()-4,getY());
                 break;
             case KEY_PRESS_RIGHT:
                 if(getDirection()!=right)
                     setDirection(right);
-                else if(!willHitObstacle(getX()+1,getY()))
-                    moveTo(getX()+1,getY());
+                else if(!willHitObstacle(getX()+4,getY()))
+                    moveTo(getX()+4,getY());
                 break;
             case KEY_PRESS_DOWN:
                 if(getDirection()!=down)
                     setDirection(down);
-                else if(!willHitObstacle(getX(),getY()-1))
-                    moveTo(getX(),getY()-1);
+                else if(!willHitObstacle(getX(),getY()-4))
+                    moveTo(getX(),getY()-4);
                 break;
             case KEY_PRESS_UP:
                 if(getDirection()!=up)
                     setDirection(up);
-                else if(!willHitObstacle(getX(),getY()+1))
-                    moveTo(getX(),getY()+1);
+                else if(!willHitObstacle(getX(),getY()+4))
+                    moveTo(getX(),getY()+4);
                 break;
             case KEY_PRESS_SPACE:
                 deployFlame();
@@ -148,21 +151,33 @@ void Penelope::deployFlame(){
     getWorld()->playSound(SOUND_PLAYER_FIRE);
     switch(this->getDirection()){
         case up:
-            for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up));
+            for(int i=0;i<3;i++){
+                Actor* other=objectOverlap(this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT);
+                if(other==nullptr || other->getBoundingBox()!=16)
+                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up));
+            }
             break;
         case down:
-            for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down));
+            for(int i=0;i<3;i++){
+                Actor* other=objectOverlap(this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT);
+                if(other==nullptr || other->getBoundingBox()!=16)
+                    getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down));
+            }
             break;
         case right:
-            for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right));
+            for(int i=0;i<3;i++){
+                Actor* other=objectOverlap(this->getX()+(i+1)*SPRITE_WIDTH,this->getY());
+                if(other==nullptr || other->getBoundingBox()!=16)
+                    getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right));
+            }
             break;
         case left:
-            for(int i=0;i<3;i++)
-                getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left));
-            break;
+            for(int i=0;i<3;i++){
+                Actor* other=objectOverlap(this->getX()-(i+1)*SPRITE_WIDTH,this->getY());
+                if(other==nullptr || other->getBoundingBox()!=16)
+                    getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left));
+            }
+                break;
     }
     numFlames--;
 }
@@ -232,6 +247,10 @@ Zombie::Zombie(StudentWorld* sw, int x, int y)
 :Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){}
 void Zombie::vomit(Infectable* target){
     target->getInfected();
+    getWorld()->playSound(SOUND_ZOMBIE_BORN);
+}
+Zombie::~Zombie(){
+    getWorld()->playSound(SOUND_ZOMBIE_DIE);
 }
 
 DumbZombie::DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc)
@@ -262,13 +281,15 @@ void Pit::doSomething(){
 
 Landmine::Landmine(StudentWorld* sw, int x, int y)
 :Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){}
+Landmine::~Landmine(){
+    getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
+}
 void Landmine::doSomething(){
     Actor* other=objectOverlap(getX(),getY());
     if(other==nullptr)
         return;
     if(other->canBeDes()){
         other->kill();
-        getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
         getWorld()->addItem(new Pit(getWorld(),getX(),getY()));
         getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),left));
         getWorld()->addItem(new Flame(getWorld(),getX()+2*SPRITE_WIDTH,getY(),right));
