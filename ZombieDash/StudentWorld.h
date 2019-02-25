@@ -19,17 +19,36 @@ public:
 
     ~StudentWorld();
     void addItem(Actor* add);
-    void getRidOfDead(); 
-    Penelope* getPenelope(){return(penelope);};
+    void getRidOfDead();
+    
+    //penelope's shit
+    void addVaccines(int x){numVacc+=x;}
+    void addFlames(int x){numFlames+=x;}
+    void addLandmines(int x){numLandmines+=x;}
+    int getFlames(){return(numFlames);}
+    int getLandmines(){return(numLandmines);}
+    int getVaccines(){return(numVacc);}
+    void decFlames(){numFlames--;}
+    void decLandmines(){numLandmines--;}
+    void decVaccines(){numVacc--;}
+    
+    bool willHitWall(Actor* curr, double x, double y);
+    bool willOverlapWithInfectable(Actor* curr,double x, double y);
+    bool willOverlapWithPenelope(Actor* curr, double x, double y);
+    bool obstacleThere(Actor* curr, double x, double y);
+    bool willHitAnything(Actor* curr, double x, double y);
+    bool killOverlapable(Actor* curr, double x, double y);
+    void infectOverlapper(Actor* curr, double x, double y);
+    
+    double getMinDistance(Actor* curr,double & minDist);
+    double distanceBetween(Actor* cur,Actor* other, double& dist);
+    double distanceFromPenelope(Actor* curr, double & dist);
+    double closestTarget(Actor* curr, double & dist);
+    
+    void manageExit(Actor* curr);
     
     int getNumCitizens(){
         return(numCitizens);
-    }
-    std::list<Actor*>::iterator getActors(){
-        return(actors.begin());
-    }
-    std::list<Actor*>::iterator getEnd(){
-        return(actors.end());
     }
     void setGameStatus(int x){
         gameStatus=x;
@@ -43,6 +62,14 @@ public:
 
 private:
     Penelope* penelope;
+    int numLandmines;
+    int numFlames;
+    int numVacc;
+    
+    Actor* objectOverlap(Actor* curr, double x, double y);
+    Actor* willHitObstacle(Actor* curr, double x, double y);
+    Actor* willOverlapWithDestructable(Actor* curr, double x, double y);
+    
     std::list<Actor*> actors;
     int numCitizens;
     int gameStatus;

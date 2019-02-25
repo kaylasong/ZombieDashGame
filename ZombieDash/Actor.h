@@ -11,10 +11,7 @@ class Actor: public GraphObject{
 public:
     Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
-    bool haveCollided(Actor* a, Actor* b);
-    Actor* objectOverlap(double x, double y);
     int nearObstacle(Actor* other);
-    bool willHitObstacle(double x, double y);
     double distanceBetween(Actor* other, double& dist);
     double minDistance(double & minDist);
     
@@ -77,19 +74,10 @@ public:
     Penelope(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     //all the goodie thingies
-    void addVaccines(int x){numVaccines+=x;}
-    void addFlames(int x){numFlames+=x;}
-    void addLandmines(int x){numLandmines+=x;}
     void deployVaccine();
     void deployFlame();
     void deployLandmine();
-    int getVacc(){return(numVaccines);}
-    int getFlames(){return(numFlames);}
-    int getLand(){return(numLandmines);}
 private:
-    int numVaccines;
-    int numFlames;
-    int numLandmines;
     bool checkMovement(int dir); 
 };
 
@@ -149,7 +137,6 @@ public:
     ~DumbZombie();
     DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc);
     virtual void doSomething();
-    bool willHitAnything(double x, double y);
 private:
     bool holdsVaccine;
 };
@@ -157,7 +144,6 @@ private:
 class SmartZombie: public Zombie{
 public:
     SmartZombie(StudentWorld* sw, int x, int y);
-    double closestTarget(double minDist);
     virtual void doSomething();
 };
 /////////////////////////////////
