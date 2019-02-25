@@ -1,6 +1,8 @@
 #include "StudentWorld.h"
 #include "GameConstants.h"
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include "Level.h"
 using namespace std;
 
@@ -17,7 +19,7 @@ StudentWorld::~StudentWorld(){
 void StudentWorld::getRidOfDead(){
     list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
-        if((*it)!=nullptr && (*it)->isDead()){
+        if((*it)!=nullptr && ((*it)->isDead() || (*it)->isSafe())){
             if((*it)->canBeInf())
                 numCitizens--;
             delete(*it);
@@ -60,7 +62,7 @@ int StudentWorld::init()
                         actors.push_back(new SmartZombie(this,c*16,r*16));
                         break;
                     case Level::dumb_zombie:
-                        if(numCitizens%10==0)
+                        if(randInt(1,10)==3)
                             actors.push_back(new DumbZombie(this,c*16,r*16,true));
                         else
                             actors.push_back(new DumbZombie(this,c*16,r*16,false));
@@ -114,6 +116,15 @@ int StudentWorld::move()
         it++;
     }
     getRidOfDead();
+    ostringstream topThing;
+    topThing<<"Score: "<<getScore()<<"  Level: "<<setw(2)<<getLevel()<<"  Lives: "<<getLives();
+    topThing<<"  Vaccines: "<<penelope->getVacc()<<"  Flames: "<<penelope->getFlames()<<
+    "  Mines: "<<penelope->getLand()<<"  Infected: ";
+    if(penelope->getIC()==-1)
+        topThing<<0;
+    else
+        topThing<<penelope->getIC();
+    setGameStatText(topThing.str());
     return gameStatus;
 }
 

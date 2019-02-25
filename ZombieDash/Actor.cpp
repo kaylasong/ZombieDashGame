@@ -1,9 +1,10 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 #include <list>
+#include <cmath>
 using namespace std;
 
-//implement:all the doSomethings, all the deploys
+//implement:all the doSomethings, all the deploys, fix landmine destruction, probability of dumb zombie vomit
 
 
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
@@ -16,6 +17,7 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     world=sw;
     m_isDead=false;
     isObstacle=obs;
+    m_safe=false;
 }
 
 Actor* Actor::objectOverlap(double x, double y){
@@ -49,6 +51,39 @@ bool Actor::willHitObstacle(double x, double y){
     return(temp!=nullptr && temp->isObs());
 }
 
+//sets dist equal to  the "this" and other
+//returns the angle between them in degrees
+double Actor::distanceBetween(Actor* other, double& dist){
+    double x=other->getX()-this->getX();
+    double y=other->getY()-this->getY();
+    dist=sqrt(pow(x,2)+pow(y,2));
+    double angle=atan2(y,x);
+    angle*=180;
+    angle/=3.14159265;
+    if(angle<0){
+        angle+=(2*180);
+    }
+    return(angle);
+}
+double Actor::minDistance(double & minDist){
+    double temp=minDist;
+    //watch out for this one
+    double tempAngle=0;
+    double ansAngle=0;
+    list<Actor*>::iterator it=getWorld()->getActors();
+    while(it!=getWorld()->getEnd()){
+        if((*it)->isObs()&&(*it)->canBeDes()&&!((*it)->canBeInf())){
+            tempAngle=distanceBetween(*it,temp);
+            if(temp<minDist){
+                minDist=temp;
+                ansAngle=tempAngle;
+            }
+        }
+        it++;
+    }
+    return(ansAngle);
+}
+
 Wall::Wall(StudentWorld* sw, int x, int y)
 :Actor(false,false,true,sw,IID_WALL,x,y,0,0){}
 void Wall::doSomething(){}
@@ -62,7 +97,7 @@ void Exit::doSomething(){
     if(other->canBeInf()){
         if(getWorld()->getPenelope()!=other){
             this->getWorld()->increaseScore(500);
-            other->kill();
+            other->save();
         }
         else if(getWorld()->getNumCitizens()==0){
             this->getWorld()->setGameStatus(GWSTATUS_FINISHED_LEVEL);
@@ -82,15 +117,33 @@ Infectable::Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep)
 }
 void Infectable::incrementIC(){
     if(infectedCount==500){
+        if(this==getWorld()->getPenelope()){
+            this->kill();
+            return;
+        }
         this->kill();
+        getWorld()->playSound(SOUND_ZOMBIE_BORN);
+        int chance=randInt(1,10);
+        if(chance>3){
+            int chance2=randInt(1,10);
+            if(chance2==3)
+                getWorld()->addItem(new DumbZombie(getWorld(),getX(),getY(),true));
+            else
+                getWorld()->addItem(new DumbZombie(getWorld(),getX(),getY(),false));
+        }
+        else{
+            getWorld()->addItem(new SmartZombie(getWorld(),getX(),getY()));
+        }
+        
         return;
     }
     if(infectedCount!=-1)
         infectedCount++;
 }
 void Infectable::getInfected(){
-    if(infectedCount==-1)
+    if(infectedCount==-1){
         infectedCount++;
+    }
 }
 
 Penelope::Penelope(StudentWorld* sw, int x, int y)
@@ -105,6 +158,7 @@ Penelope::~Penelope(){
 void Penelope::doSomething(){
     incrementIC();
     if(this->isDead()){
+        this->getWorld()->decLives();
         this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
         return;
     }
@@ -197,10 +251,75 @@ void Penelope::deployLandmine(){
     numLandmines--;
     getWorld()->addItem(new Landmine(getWorld(),getX(),getY()));
 }
-//deploy functions
+
+Citizen::~Citizen(){
+    if(isDead())
+        getWorld()->increaseScore(-1000);
+}
 Citizen::Citizen(StudentWorld* sw, int x, int y)
-:Infectable(sw,IID_CITIZEN,x,y,0,0){}
-void Citizen::doSomething(){}
+:Infectable(sw,IID_CITIZEN,x,y,0,0){
+    canMove=false;
+}
+bool Citizen::move(double x, double y, int currDir, int toDir){
+    if(!willHitObstacle(x,y)){
+        if(toDir!=currDir)
+            setDirection(toDir);
+        else
+            moveTo(x,y);
+        return(true);
+    }
+    return(false);
+}
+void Citizen::doSomething(){
+    incrementIC();
+    if(isDead())
+        return;
+    toggle();
+    if(!getCM())
+        return;
+    double dist_p;
+    int p_dir=distanceBetween(getWorld()->getPenelope(),dist_p);
+    double dist_z=dist_p+1;
+    double z_dir=minDistance(dist_z);
+    if(dist_p<dist_z && dist_p<80){
+        if(p_dir<=45 || 360-p_dir<=45){
+            if(move(getX()+2,getY(),getDirection(),right))
+                return;
+        }
+        else if(p_dir<=90 || p_dir<=135){
+            if(move(getX(),getY()+2,getDirection(),up))
+                return;
+        }
+        else if(p_dir<=180 || p_dir<=225){
+            if(move(getX()-2,getY(),getDirection(),left))
+                return;
+        }
+        else if(p_dir<=270 || p_dir<=315){
+            if(move(getX(),getY()-2,getDirection(),down))
+                return;
+        }
+        else
+            cerr<<"you calculated the angles wrong."<<endl;
+    }
+    if(dist_z<80){
+        if(z_dir<=45 || 360-z_dir<=45){
+            if(move(getX()-2,getY(),getDirection(),left))
+                return;
+        }
+        else if(z_dir<=90 || z_dir<=135){
+            if(move(getX(),getY()-2,getDirection(),down))
+                return;
+        }
+        else if(z_dir<=180 || z_dir<=225){
+            if(move(getX()+2,getY(),getDirection(),right))
+                return;
+        }
+        else if(z_dir<=270 || z_dir<=315){
+            if(move(getX(),getY()-2,getDirection(),up))
+                return;
+        }
+    }
+}
 
 ///////////////
 Goodie::Goodie(StudentWorld* sw, int id, int x, int y)
@@ -248,7 +367,9 @@ void LandmineGoodie::doSomething(){
 /////////////////
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Zombie::Zombie(StudentWorld* sw, int x, int y)
-:Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){}
+:Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){
+    moveDis=0;
+}
 bool Zombie::vomit(double x, double y, int dir){
     getWorld()->addItem(new Vomit(getWorld(),x, y,dir));
     getWorld()->playSound(SOUND_ZOMBIE_VOMIT);
@@ -281,12 +402,12 @@ DumbZombie::DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc)
     holdsVaccine=holdsVacc;
     m_canMove=false;
 }
-DumbZombie::~DumbZombie(){
-    getWorld()->increaseScore(1000);
-}
+DumbZombie::~DumbZombie(){}
 void DumbZombie::doSomething(){
     toggleCM();
-    if(isDead() || !m_canMove)
+    if(isDead())
+        getWorld()->increaseScore(1000);
+    if(!m_canMove)
         return;
 
     int dir=getDirection();
@@ -309,22 +430,23 @@ void DumbZombie::doSomething(){
         case down:
             other=objectOverlap(getX(),getY()-SPRITE_HEIGHT);
             if(other!=nullptr && other->canBeInf()){
-                vomit(getX()-SPRITE_WIDTH,getY(), down);
+                vomit(getX(),getY()-SPRITE_HEIGHT, down);
                 return;
             }
             break;
         case up:
             other=objectOverlap(getX(),getY()+SPRITE_HEIGHT);
             if(other!=nullptr && other->canBeInf()){
-                vomit(getX()-SPRITE_WIDTH,getY(), up);
+                vomit(getX(),getY()+SPRITE_HEIGHT, up);
                 return;
             }
             break;
     }
-    if(getMD()==0)
+    if(getMD()==0){
         pickNewMovementPlan();
-    int dir2=getDirection();
-    switch(dir2){
+        dir=getDirection();
+    }
+    switch(dir){
         case right:
             if(!willHitObstacle(getX()+1,getY())){
                 moveTo(getX()+1, getY());
@@ -397,15 +519,15 @@ void Landmine::doSomething(){
         return;
     if(other->canBeDes()){
         other->kill();
-        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),left,false));
-        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY(),right,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY(),up,false));
         getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up,false));
-        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,down,false));
-        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()+SPRITE_WIDTH,135,false));
-        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()-SPRITE_WIDTH,180+45,false));
-        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()+SPRITE_WIDTH,45,false));
-        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()-SPRITE_WIDTH,360-45,false));
-        getWorld()->addItem(new Flame(getWorld(),getX(),getY(),right, true));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()+SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()-SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()+SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()-SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY(),up, true));
         kill();
     }
 }
@@ -449,7 +571,8 @@ void Vomit::doSomething(){
     if(isDead())
         return;
     Actor* other=objectOverlap(getX(),getY());
-    if(other!=nullptr&&other->canBeInf())
+    if(other!=nullptr&&other->canBeInf()){
         other->getInfected();
+    }
     this->decST();
 }

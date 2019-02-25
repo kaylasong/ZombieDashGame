@@ -15,12 +15,16 @@ public:
     Actor* objectOverlap(double x, double y);
     int nearObstacle(Actor* other);
     bool willHitObstacle(double x, double y);
+    double distanceBetween(Actor* other, double& dist);
+    double minDistance(double & minDist);
     
     //accessors
     void kill(){m_isDead=true;}
+    void save(){m_safe=true;}
     bool canBeInf(){return(canBeInfected);}
     bool canBeDes(){return(canBeDestroyed);}
     bool isDead(){return(m_isDead);}
+    bool isSafe(){return(m_safe);}
     bool isObs(){return(isObstacle);}
     StudentWorld* getWorld(){return(world);}
     
@@ -30,6 +34,7 @@ private:
     bool canBeDestroyed;
     bool m_isDead;
     bool isObstacle;
+    bool m_safe;
     StudentWorld* world;
 };
 
@@ -77,6 +82,9 @@ public:
     void deployVaccine();
     void deployFlame();
     void deployLandmine();
+    int getVacc(){return(numVaccines);}
+    int getFlames(){return(numFlames);}
+    int getLand(){return(numLandmines);}
 private:
     int numVaccines;
     int numFlames;
@@ -86,8 +94,14 @@ private:
 
 class Citizen: public Infectable{
 public:
+    ~Citizen();
     Citizen(StudentWorld* sw, int x, int y);
     virtual void doSomething();
+    bool getCM(){return(canMove);};
+    void toggle(){canMove=!canMove;};
+    bool move(double x, double y, int curDir, int toDir);
+private:
+    bool canMove;
 };
 ///////////////
 class Goodie: public Damageable{
