@@ -42,6 +42,8 @@ StudentWorld::StudentWorld(string assetPath)
 
 int StudentWorld::init()
 {
+    if(whichLevel==6)
+        return(GWSTATUS_PLAYER_WON);
     gameStatus=GWSTATUS_CONTINUE_GAME;
     Level l(assetPath());
     string level=levels[whichLevel]; 

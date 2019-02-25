@@ -56,6 +56,7 @@ public:
 class Damageable: public Actor{
 public:
     Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
+    bool move(int dir, int dist);
 };
 
 //////////////
@@ -99,7 +100,7 @@ public:
     virtual void doSomething();
     bool getCM(){return(canMove);};
     void toggle(){canMove=!canMove;};
-    bool move(double x, double y, int curDir, int toDir);
+    double minDistance(double & minDist);
 private:
     bool canMove;
 };
@@ -131,12 +132,16 @@ class Zombie: public Damageable{
 public:
     ~Zombie();
     Zombie(StudentWorld* sw, int x, int y);
-    bool vomit(double x, double y, int dir);
+    void doVomit(double x, double y, int dir);
     void pickNewMovementPlan();
     int getMD(){return(moveDis);}
     void setMD(int x){moveDis=x;}
+    bool canMove(){return(m_canMove);}
+    void toggleCM(){m_canMove=!m_canMove;}
+    bool vomit();
 private:
     int moveDis;
+    bool m_canMove;
 };
 
 class DumbZombie: public Zombie{
@@ -144,15 +149,15 @@ public:
     ~DumbZombie();
     DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc);
     virtual void doSomething();
-    void toggleCM(){m_canMove=!m_canMove;}
+    bool willHitAnything(double x, double y);
 private:
     bool holdsVaccine;
-    bool m_canMove;
 };
 
 class SmartZombie: public Zombie{
 public:
     SmartZombie(StudentWorld* sw, int x, int y);
+    double closestTarget(double minDist);
     virtual void doSomething();
 };
 /////////////////////////////////

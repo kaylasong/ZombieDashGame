@@ -4,7 +4,7 @@
 #include <cmath>
 using namespace std;
 
-//implement:all the doSomethings, all the deploys, fix landmine destruction, probability of dumb zombie vomit
+//fix: zombie movement plans, pointer list erasal error
 
 
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
@@ -19,7 +19,6 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     isObstacle=obs;
     m_safe=false;
 }
-
 Actor* Actor::objectOverlap(double x, double y){
     std::list<Actor*>::iterator it=world->getActors();    
     while(it!=world->getEnd()){
@@ -32,25 +31,20 @@ Actor* Actor::objectOverlap(double x, double y){
     }
     return(nullptr);
 }
-
 bool Actor::willHitObstacle(double x, double y){
-    Actor* temp=nullptr;
     std::list<Actor*>::iterator it=world->getActors();
     while(it!=world->getEnd()){
         if(this!=(*it)){
             if((*it)->isObs()){
                 if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
-                   y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
-                    temp=(*it);
-                    break;
-                }
+                   y<=(*it)->getY()+15 && y+15>=(*it)->getY())
+                    return(true);
             }
         }
         it++;
     }
-    return(temp!=nullptr && temp->isObs());
+    return(false);
 }
-
 //sets dist equal to  the "this" and other
 //returns the angle between them in degrees
 double Actor::distanceBetween(Actor* other, double& dist){
@@ -65,24 +59,7 @@ double Actor::distanceBetween(Actor* other, double& dist){
     }
     return(angle);
 }
-double Actor::minDistance(double & minDist){
-    double temp=minDist;
-    //watch out for this one
-    double tempAngle=0;
-    double ansAngle=0;
-    list<Actor*>::iterator it=getWorld()->getActors();
-    while(it!=getWorld()->getEnd()){
-        if((*it)->isObs()&&(*it)->canBeDes()&&!((*it)->canBeInf())){
-            tempAngle=distanceBetween(*it,temp);
-            if(temp<minDist){
-                minDist=temp;
-                ansAngle=tempAngle;
-            }
-        }
-        it++;
-    }
-    return(ansAngle);
-}
+
 
 Wall::Wall(StudentWorld* sw, int x, int y)
 :Actor(false,false,true,sw,IID_WALL,x,y,0,0){}
@@ -97,6 +74,7 @@ void Exit::doSomething(){
     if(other->canBeInf()){
         if(getWorld()->getPenelope()!=other){
             this->getWorld()->increaseScore(500);
+            getWorld()->playSound(SOUND_CITIZEN_SAVED);
             other->save();
         }
         else if(getWorld()->getNumCitizens()==0){
@@ -110,6 +88,35 @@ void Exit::doSomething(){
 Damageable::Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 :Actor(inf, true, obs, sw, id, x, y, dir, dep)
 {}
+bool Damageable::move(int dir, int dist){
+    switch(dir){
+        case up:
+            if(!willHitObstacle(getX(),getY()+dist)){
+                moveTo(getX(),getY()+dist);
+                return(true);
+            }
+            break;
+        case right:
+            if(!willHitObstacle(getX()+dist,getY())){
+                moveTo(getX()+dist,getY());
+                return(true);
+            }
+            break;
+        case down:
+            if(!willHitObstacle(getX(),getY()-dist)){
+                moveTo(getX(),getY()-dist);
+                return(true);
+            }
+            break;
+        case left:
+            if(!willHitObstacle(getX()-dist,getY())){
+                moveTo(getX()-dist,getY());
+                return(true);
+            }
+            break;
+    }
+    return(false);
+}
 
 Infectable::Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep)
 :Damageable(true, true, sw, id, x, y, dir, dep){
@@ -152,12 +159,11 @@ Penelope::Penelope(StudentWorld* sw, int x, int y)
     numFlames=0;
     numLandmines=0;
 }
-Penelope::~Penelope(){
-    getWorld()->playSound(SOUND_PLAYER_DIE);
-}
+Penelope::~Penelope(){}
 void Penelope::doSomething(){
     incrementIC();
     if(this->isDead()){
+        getWorld()->playSound(SOUND_PLAYER_DIE);
         this->getWorld()->decLives();
         this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
         return;
@@ -260,15 +266,23 @@ Citizen::Citizen(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_CITIZEN,x,y,0,0){
     canMove=false;
 }
-bool Citizen::move(double x, double y, int currDir, int toDir){
-    if(!willHitObstacle(x,y)){
-        if(toDir!=currDir)
-            setDirection(toDir);
-        else
-            moveTo(x,y);
-        return(true);
+double Citizen::minDistance(double & minDist){
+    double temp=minDist;
+    //watch out for this one
+    double tempAngle=0;
+    double ansAngle=0;
+    list<Actor*>::iterator it=getWorld()->getActors();
+    while(it!=getWorld()->getEnd()){
+        if((*it)->isObs()&&(*it)->canBeDes()&&!((*it)->canBeInf())){
+            tempAngle=distanceBetween(*it,temp);
+            if(temp<minDist){
+                minDist=temp;
+                ansAngle=tempAngle;
+            }
+        }
+        it++;
     }
-    return(false);
+    return(ansAngle);
 }
 void Citizen::doSomething(){
     incrementIC();
@@ -283,19 +297,19 @@ void Citizen::doSomething(){
     double z_dir=minDistance(dist_z);
     if(dist_p<dist_z && dist_p<80){
         if(p_dir<=45 || 360-p_dir<=45){
-            if(move(getX()+2,getY(),getDirection(),right))
+            if(move(right,2))
                 return;
         }
         else if(p_dir<=90 || p_dir<=135){
-            if(move(getX(),getY()+2,getDirection(),up))
+            if(move(up,2))
                 return;
         }
         else if(p_dir<=180 || p_dir<=225){
-            if(move(getX()-2,getY(),getDirection(),left))
+            if(move(left,2))
                 return;
         }
         else if(p_dir<=270 || p_dir<=315){
-            if(move(getX(),getY()-2,getDirection(),down))
+            if(move(down,2))
                 return;
         }
         else
@@ -303,19 +317,19 @@ void Citizen::doSomething(){
     }
     if(dist_z<80){
         if(z_dir<=45 || 360-z_dir<=45){
-            if(move(getX()-2,getY(),getDirection(),left))
+            if(move(left,2))
                 return;
         }
         else if(z_dir<=90 || z_dir<=135){
-            if(move(getX(),getY()-2,getDirection(),down))
+            if(move(down,2))
                 return;
         }
         else if(z_dir<=180 || z_dir<=225){
-            if(move(getX()+2,getY(),getDirection(),right))
+            if(move(right,2))
                 return;
         }
         else if(z_dir<=270 || z_dir<=315){
-            if(move(getX(),getY()-2,getDirection(),up))
+            if(move(up,2))
                 return;
         }
     }
@@ -369,119 +383,167 @@ void LandmineGoodie::doSomething(){
 Zombie::Zombie(StudentWorld* sw, int x, int y)
 :Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){
     moveDis=0;
+    m_canMove=false;
 }
-bool Zombie::vomit(double x, double y, int dir){
+void Zombie::doVomit(double x, double y, int dir){
     getWorld()->addItem(new Vomit(getWorld(),x, y,dir));
     getWorld()->playSound(SOUND_ZOMBIE_VOMIT);
-    return(true);
+}
+bool Zombie::vomit(){
+    int dir=getDirection();
+    Actor* other=nullptr;
+    int chance=randInt(1,3);
+    switch(dir){
+        case right:
+            other=objectOverlap(getX()+SPRITE_WIDTH,getY());
+            if(other!=nullptr && other->canBeInf() && chance==1){
+                doVomit(getX()+SPRITE_WIDTH,getY(), right);
+                return(true);
+            }
+            break;
+        case left:
+            other=objectOverlap(getX()-SPRITE_WIDTH,getY());
+            if(other!=nullptr && other->canBeInf() && chance==1){
+                doVomit(getX()-SPRITE_WIDTH,getY(), left);
+                return(true);
+            }
+            break;
+        case down:
+            other=objectOverlap(getX(),getY()-SPRITE_HEIGHT);
+            if(other!=nullptr && other->canBeInf() && chance==1){
+                doVomit(getX(),getY()-SPRITE_HEIGHT, down);
+                return(true);
+            }
+            break;
+        case up:
+            other=objectOverlap(getX(),getY()+SPRITE_HEIGHT);
+            if(other!=nullptr && other->canBeInf() && chance==1){
+                doVomit(getX(),getY()+SPRITE_HEIGHT, up);
+                return(true);
+            }
+            break;
+    }
+    return(false);
 }
 Zombie::~Zombie(){
     getWorld()->playSound(SOUND_ZOMBIE_DIE);
 }
 void Zombie::pickNewMovementPlan(){
     moveDis=randInt(3,10);
-    int rand=randInt(0,3);
-    switch(rand){
-        case 0:
-            setDirection(up);
-            break;
-        case 1:
-            setDirection(down);
-            break;
-        case 2:
-            setDirection(left);
-            break;
-        case 3:
-            setDirection(right);
-            break;
-    }
+    int rand=randInt(1,4)*90;
+    setDirection(rand);
 }
 
 DumbZombie::DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc)
 :Zombie(sw,x,y){
     holdsVaccine=holdsVacc;
-    m_canMove=false;
+}
+bool DumbZombie::willHitAnything(double x, double y){
+    std::list<Actor*>::iterator it=getWorld()->getActors();
+    while(it!=getWorld()->getEnd()){
+        if(this!=(*it)){
+            if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
+               y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
+                return(true);
+            }
+        }
+        it++;
+    }
+    return(false);
 }
 DumbZombie::~DumbZombie(){}
 void DumbZombie::doSomething(){
     toggleCM();
-    if(isDead())
+    if(isDead()){
         getWorld()->increaseScore(1000);
-    if(!m_canMove)
-        return;
-
-    int dir=getDirection();
-    Actor* other=nullptr;
-    switch(dir){
-        case right:
-            other=objectOverlap(getX()+SPRITE_WIDTH,getY());
-            if(other!=nullptr && other->canBeInf()){
-                vomit(getX()+SPRITE_WIDTH,getY(), right);
-                return;
+        if(holdsVaccine){
+            int dir=randInt(1,4);
+            switch(dir){
+                case 1:
+                    if(willHitAnything(getX(),getY()+SPRITE_HEIGHT))
+                        getWorld()->addItem(new VaccineGoodie(getWorld(),getX(),getY()+SPRITE_HEIGHT));
+                    break;
+                case 2:
+                    if(willHitAnything(getX()+SPRITE_WIDTH,getY()))
+                        getWorld()->addItem(new VaccineGoodie(getWorld(),getX()+SPRITE_WIDTH,getY()));
+                    break;
+                case 3:
+                    if(willHitAnything(getX(),getY()-SPRITE_HEIGHT))
+                        getWorld()->addItem(new VaccineGoodie(getWorld(),getX(),getY()-SPRITE_HEIGHT));
+                    break;
+                case 4:
+                    if(willHitAnything(getX()-SPRITE_WIDTH,getY()))
+                        getWorld()->addItem(new VaccineGoodie(getWorld(),getX()-SPRITE_WIDTH,getY()));
+                    break;
             }
-            break;
-        case left:
-            other=objectOverlap(getX()-SPRITE_WIDTH,getY());
-            if(other!=nullptr && other->canBeInf()){
-                vomit(getX()-SPRITE_WIDTH,getY(), left);
-                return;
-            }
-            break;
-        case down:
-            other=objectOverlap(getX(),getY()-SPRITE_HEIGHT);
-            if(other!=nullptr && other->canBeInf()){
-                vomit(getX(),getY()-SPRITE_HEIGHT, down);
-                return;
-            }
-            break;
-        case up:
-            other=objectOverlap(getX(),getY()+SPRITE_HEIGHT);
-            if(other!=nullptr && other->canBeInf()){
-                vomit(getX(),getY()+SPRITE_HEIGHT, up);
-                return;
-            }
-            break;
+        }
     }
+    if(!canMove())
+        return;
+    if(vomit())
+        return;
     if(getMD()==0){
         pickNewMovementPlan();
-        dir=getDirection();
     }
-    switch(dir){
-        case right:
-            if(!willHitObstacle(getX()+1,getY())){
-                moveTo(getX()+1, getY());
-                setMD(getMD()-1);
-                return;
-            }
-            break;
-        case left:
-            if(!willHitObstacle(getX()-1,getY())){
-                moveTo(getX()-1, getY());
-                setMD(getMD()-1);
-                return;
-            }
-            break;
-        case down:
-            if(!willHitObstacle(getX(),getY()-1)){
-                moveTo(getX(), getY()-1);
-                setMD(getMD()-1);
-                return;
-            }
-            break;
-        case up:
-            if(!willHitObstacle(getX(),getY()+1)){
-                moveTo(getX(), getY()+1);
-                setMD(getMD()-1);
-                return;
-            }
-            break;
-    }
-    setMD(0);
+    if(!move(getDirection(),1))
+        setMD(0);
 }
 
 SmartZombie::SmartZombie(StudentWorld* sw, int x, int y)
 :Zombie(sw,x,y){}
-void SmartZombie::doSomething(){}
+double SmartZombie::closestTarget(double minDist){
+    double temp=minDist;
+    //watch out for this one
+    double tempAngle=0;
+    double ansAngle=0;
+    list<Actor*>::iterator it=getWorld()->getActors();
+    while(it!=getWorld()->getEnd()){
+        if((*it)->canBeInf()){
+            tempAngle=distanceBetween(*it,temp);
+            if(temp<minDist){
+                minDist=temp;
+                ansAngle=tempAngle;
+            }
+        }
+        it++;
+    }
+    return(ansAngle);
+}
+void SmartZombie::doSomething(){
+    toggleCM();
+    if(isDead() || !canMove())
+        return;
+    if(vomit())
+        return;
+    if(getMD()==0)
+        pickNewMovementPlan();
+    int dist=999999999;
+    int dir=closestTarget(dist);
+    if(dist>80){
+        int randDir=randInt(1,4)*90;
+        move(randDir,1);
+    }
+    else{
+        setDirection(dir);
+        if(dir<=45 || 360-dir<=45){
+            if(move(right,1))
+                return;
+        }
+        else if(dir<=90 || dir<=135){
+            if(move(up,1))
+                return;
+        }
+        else if(dir<=180 || dir<=225){
+            if(move(left,1))
+                return;
+        }
+        else if(dir<=270 || dir<=315){
+            if(move(down,1))
+                return;
+        }
+    }
+    setMD(0);
+}
 
 ///////////////////////////////////
 //Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
@@ -504,7 +566,6 @@ Landmine::Landmine(StudentWorld* sw, int x, int y)
     activationTime=0;
 }
 Landmine::~Landmine(){
-    getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
 }
 void Landmine::incrementActivationTime(){
     activationTime++;
@@ -518,11 +579,12 @@ void Landmine::doSomething(){
     if(other==nullptr)
         return;
     if(other->canBeDes()){
+        getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
         other->kill();
         getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),up,false));
         getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY(),up,false));
         getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up,false));
-        getWorld()->addItem(new Flame(getWorld(),getX(),getY()-SPRITE_WIDTH,up,false));
+        getWorld()->addItem(new Flame(getWorld(),getX(),getY()+SPRITE_WIDTH,up,false));
         getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()+SPRITE_WIDTH,up,false));
         getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY()-SPRITE_WIDTH,up,false));
         getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY()+SPRITE_WIDTH,up,false));
