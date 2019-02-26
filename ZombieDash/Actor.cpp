@@ -4,15 +4,14 @@
 #include <cmath>
 using namespace std;
 
-//fix: smart zombie movement plans, pointer list erasal error, check the points and erethang
-//read spec
-
+//Flames and exits?
 
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 //class StudentWorld;
 //// Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
-Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
+Actor::Actor(bool inf, bool des, bool deser, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 :GraphObject(id, x, y, dir, dep){
+    m_isDestroyer=deser;
     canBeInfected=inf;
     canBeDestroyed=des;
     world=sw;
@@ -20,51 +19,49 @@ Actor::Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, d
     isObstacle=obs;
     m_safe=false;
 }
-
-
 //sets dist equal to  the "this" and other
 //returns the angle between them in degrees
 
 
 Wall::Wall(StudentWorld* sw, int x, int y)
-:Actor(false,false,true,sw,IID_WALL,x,y,0,0){}
+:Actor(false,false,false,true,sw,IID_WALL,x,y,0,0){}
 void Wall::doSomething(){}
 
 Exit::Exit(StudentWorld* sw, int x, int y)
-:Actor(false,false,false,sw,IID_EXIT,x,y,0,1){}
+:Actor(false,false,false,false,sw,IID_EXIT,x,y,0,1){}
 void Exit::doSomething(){
     getWorld()->manageExit(this);
 }
 
-Damageable::Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
-:Actor(inf, true, obs, sw, id, x, y, dir, dep)
+Mover::Mover(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep)
+:Actor(inf, true, false, obs, sw, id, x, y, dir, dep)
 {}
-bool Damageable::move(int dir, int dist){
+bool Mover::move(int dir, int dist){
     switch(dir){
         case up:
             if(!getWorld()->obstacleThere(this,getX(),getY()+dist)){
-                setDirection(dir);
+                setDirection(up);
                 moveTo(getX(),getY()+dist);
                 return(true);
             }
             break;
         case right:
             if(!getWorld()->obstacleThere(this,getX()+dist,getY())){
-                setDirection(dir);
+                setDirection(right);
                 moveTo(getX()+dist,getY());
                 return(true);
             }
             break;
         case down:
             if(!getWorld()->obstacleThere(this,getX(),getY()-dist)){
-                setDirection(dir);
+                setDirection(down);
                 moveTo(getX(),getY()-dist);
                 return(true);
             }
             break;
         case left:
             if(!getWorld()->obstacleThere(this,getX()-dist,getY())){
-                setDirection(dir);
+                setDirection(left);
                 moveTo(getX()-dist,getY());
                 return(true);
             }
@@ -72,9 +69,51 @@ bool Damageable::move(int dir, int dist){
     }
     return(false);
 }
+bool Mover::smartMove(int dir, int dist){
+    switch(dir){
+        case 0:
+        case 360:
+            if(move(right,dist))
+                return(true);
+        case 90:
+            if(move(up,dist))
+                return(true);
+        case 180:
+            if(move(left,dist))
+                return(true);
+        case 270:
+            if(move(down,dist))
+                return(true);
+    }
+    int half=randInt(1,2);
+    if(dir>0&&dir<90)
+        return(chooseDir(half,right,up,dist));
+    else if(dir>90 && dir<180)
+        return(chooseDir(half,up,left,dist));
+    else if(dir>180&&dir<270)
+        return(chooseDir(half,left,down,dist));
+    else if(dir>270)
+        return(chooseDir(half,down,right,dist));
+    return(false);
+}
+bool Mover::chooseDir(int half,int dir1, int dir2, int dist){
+    if(half==1){
+        if(!move(dir1,dist)){
+            return(move(dir2,dist));
+        }
+        return(true);
+    }
+    else if(half==2){
+        if(!move(dir2,dist)){
+            return(move(dir1,dist));
+        }
+        return(true);
+    }
+    return(false);
+}
 
 Infectable::Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep)
-:Damageable(true, true, sw, id, x, y, dir, dep){
+:Mover(true, true, sw, id, x, y, dir, dep){
     infectedCount=-1;
 }
 void Infectable::incrementIC(){
@@ -106,7 +145,13 @@ void Infectable::getInfected(){
 
 Penelope::Penelope(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_PLAYER,x,y,0,0){}
-Penelope::~Penelope(){}
+Penelope::~Penelope(){
+    if(isDead()){
+        getWorld()->playSound(SOUND_PLAYER_DIE);
+        this->getWorld()->decLives();
+        this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
+    }
+}
 void Penelope::doSomething(){
     incrementIC();
     if(this->isDead()){
@@ -166,7 +211,9 @@ void Penelope::deployFlame(){
             for(int i=0;i<3;i++){
                 if(this->getY()+(i+1)*SPRITE_HEIGHT>=VIEW_HEIGHT)
                     break;
-                if(!getWorld()->willHitWall(this,this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT))
+                if(!getWorld()->flameAllowed(this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT))
+                    break;
+                else
                     getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()+(i+1)*SPRITE_HEIGHT, up,false));
             }
             break;
@@ -174,7 +221,9 @@ void Penelope::deployFlame(){
             for(int i=0;i<3;i++){
                 if(this->getY()-(i+1)*SPRITE_HEIGHT<0)
                     break;
-                if(!getWorld()->willHitWall(this,this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT))
+                if(!getWorld()->flameAllowed(this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT))
+                    break;
+                else
                     getWorld()->addItem(new Flame(getWorld(),this->getX(),this->getY()-(i+1)*SPRITE_HEIGHT, down,false));
             }
             break;
@@ -182,7 +231,9 @@ void Penelope::deployFlame(){
             for(int i=0;i<3;i++){
                 if(this->getX()+(i+1)*SPRITE_WIDTH>=VIEW_WIDTH)
                     break;
-                if(!getWorld()->willHitWall(this,this->getX()+(i+1)*SPRITE_WIDTH,this->getY()))
+                if(!getWorld()->flameAllowed(this->getX()+(i+1)*SPRITE_WIDTH,this->getY()))
+                    break;
+                else
                     getWorld()->addItem(new Flame(getWorld(),this->getX()+(i+1)*SPRITE_WIDTH,this->getY(), right,false));
             }
             break;
@@ -190,7 +241,9 @@ void Penelope::deployFlame(){
             for(int i=0;i<3;i++){
                 if(this->getX()-(i+1)*SPRITE_WIDTH<=0)
                     break;
-                if(!getWorld()->willHitWall(this,this->getX()-(i+1)*SPRITE_WIDTH,this->getY()))
+                if(!getWorld()->flameAllowed(this->getX()-(i+1)*SPRITE_WIDTH,this->getY()))
+                    break;
+                else
                     getWorld()->addItem(new Flame(getWorld(),this->getX()-(i+1)*SPRITE_WIDTH,this->getY(), left,false));
             }
                 break;
@@ -218,56 +271,29 @@ Citizen::Citizen(StudentWorld* sw, int x, int y)
 }
 void Citizen::doSomething(){
     incrementIC();
-    if(isDead())
-        return;
     toggle();
-    if(!getCM())
+    if(isDead() || !getCM())
         return;
     double dist_p;
     int p_dir=getWorld()->distanceFromPenelope(this,dist_p);
     double dist_z=9999999;
     double z_dir=getWorld()->getMinDistance(this,dist_z);
     if(dist_p<dist_z && dist_p<80){
-        if(p_dir<=45 || 360-p_dir<=45){
-            if(move(right,2))
-                return;
-        }
-        else if(p_dir<=90 || p_dir<=135){
-            if(move(up,2))
-                return;
-        }
-        else if(p_dir<=180 || p_dir<=225){
-            if(move(left,2))
-                return;
-        }
-        else if(p_dir<=270 || p_dir<=315){
-            if(move(down,2))
-                return;
-        }
+        if(smartMove(p_dir,2))
+            return;
     }
     if(dist_z<80){
-        if(z_dir<=45 || 360-z_dir<=45){
-            if(move(left,2))
-                return;
-        }
-        else if(z_dir<=90 || z_dir<=135){
-            if(move(down,2))
-                return;
-        }
-        else if(z_dir<=180 || z_dir<=225){
-            if(move(right,2))
-                return;
-        }
-        else if(z_dir<=270 || z_dir<=315){
-            if(move(up,2))
-                return;
-        }
+        if(z_dir>=180)
+            z_dir-=180;
+        else
+            z_dir+=180;
+        smartMove(z_dir,2);
     }
 }
 
 ///////////////
 Goodie::Goodie(StudentWorld* sw, int id, int x, int y)
-:Damageable(false,false,sw,id,x,y,0,1){}
+:Actor(false,true,false,false,sw,id,x,y,0,1){}
 VaccineGoodie::VaccineGoodie(StudentWorld* sw, int x, int y)
 :Goodie(sw,IID_VACCINE_GOODIE,x,y){}
 void VaccineGoodie::doSomething(){
@@ -302,7 +328,7 @@ void LandmineGoodie::doSomething(){
 /////////////////
 //Damageable::Damageable(bool inf, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Zombie::Zombie(StudentWorld* sw, int x, int y)
-:Damageable(false,true,sw,IID_ZOMBIE,x,y,0,0){
+:Mover(false,true,sw,IID_ZOMBIE,x,y,0,0){
     moveDis=0;
     m_canMove=false;
 }
@@ -333,7 +359,7 @@ bool Zombie::vomit(){
             }
             break;
         case up:
-            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()-SPRITE_HEIGHT) && chance==1){
+            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()+SPRITE_HEIGHT) && chance==1){
                 doVomit(getX(),getY()+SPRITE_HEIGHT, up);
                 return(true);
             }
@@ -341,7 +367,6 @@ bool Zombie::vomit(){
     }
     return(false);
 }
-Zombie::~Zombie(){}
 void Zombie::pickNewMovementPlan(){
     moveDis=randInt(3,10);
     int rand=randInt(1,4)*90;
@@ -352,10 +377,7 @@ DumbZombie::DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc)
 :Zombie(sw,x,y){
     holdsVaccine=holdsVacc;
 }
-
-DumbZombie::~DumbZombie(){}
-void DumbZombie::doSomething(){
-    toggleCM();
+DumbZombie::~DumbZombie(){
     if(isDead()){
         getWorld()->increaseScore(1000);
         getWorld()->playSound(SOUND_ZOMBIE_DIE);
@@ -381,9 +403,10 @@ void DumbZombie::doSomething(){
             }
         }
     }
-    if(!canMove())
-        return;
-    if(vomit())
+}
+void DumbZombie::doSomething(){
+    toggleCM();
+    if(isDead() || !canMove() || vomit())
         return;
     if(getMD()==0){
         pickNewMovementPlan();
@@ -396,58 +419,46 @@ void DumbZombie::doSomething(){
 
 SmartZombie::SmartZombie(StudentWorld* sw, int x, int y)
 :Zombie(sw,x,y){}
+SmartZombie::~SmartZombie(){
+    if(isDead()){
+        getWorld()->increaseScore(2000);
+        getWorld()->playSound(SOUND_ZOMBIE_DIE);
+    }
+}
 void SmartZombie::doSomething(){
     toggleCM();
-    if(isDead()){
-        getWorld()->playSound(SOUND_ZOMBIE_DIE);
+    if(isDead() || !canMove() || vomit())
         return;
-    }
-    if(!canMove())
-        return;
-    if(vomit())
-        return;
-    if(getMD()==0)
+    if(getMD()==0){
         pickNewMovementPlan();
-    double dist=999999999;
-    int dir=getWorld()->closestTarget(this,dist);
-    if(dist>80){
-        int randDir=randInt(1,4)*90;
-        move(randDir,1);
-    }
-    else{
-        setDirection(dir);
-        if(dir<=45 || 360-dir<=45){
-            if(move(right,1)){
+        double dist=999999999;
+        int dir=getWorld()->closestTarget(this,dist);
+        if(dist>80){
+            int randDir=randInt(1,4)*90;
+            if(move(randDir,1)){
                 setMD(getMD()-1);
                 return;
             }
         }
-        else if(dir<=90 || dir<=135){
-            if(move(up,1)){
-                setMD(getMD()-1);
-                return;
-            }
-        }
-        else if(dir<=180 || dir<=225){
-            if(move(left,1)){
-                setMD(getMD()-1);
-                return;
-            }
-        }
-        else if(dir<=270 || dir<=315){
-            if(move(down,1)){
+        else{
+            if(smartMove(dir,1)){
                 setMD(getMD()-1);
                 return;
             }
         }
     }
+    else
+        if(move(getDirection(),1)){
+            setMD(getMD()-1);
+            return;
+        }
     setMD(0);
 }
 
 ///////////////////////////////////
 //Actor::Actor(bool inf, bool des, StudentWorld* sw, int id, double x, double y, int dir, int dep)
 Damaging::Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y,int dir, int dep)
-:Actor(inf,des,false, sw,id,x,y,dir,dep){}
+:Actor(inf,des,true,false, sw,id,x,y,dir,dep){}
 
 Pit::Pit(StudentWorld* sw, int x, int y)
 :Damaging(false,false,sw,IID_PIT,x,y,0,0){}
@@ -459,8 +470,6 @@ Landmine::Landmine(StudentWorld* sw, int x, int y)
 :Damaging(false,false,sw,IID_LANDMINE,x,y,0,0){
     activationTime=0;
 }
-Landmine::~Landmine(){
-}
 void Landmine::incrementActivationTime(){
     activationTime++;
 }
@@ -469,9 +478,10 @@ void Landmine::doSomething(){
         incrementActivationTime();
         return;
     }
-    if(!getWorld()->killOverlapable(this,getX(),getY()))
+    if(!getWorld()->willOverlap(this,getX(),getY()))
         return;
     else{
+        getWorld()->killOverlapable(this,getX(),getY());
         getWorld()->playSound(SOUND_LANDMINE_EXPLODE);
         getWorld()->addItem(new Flame(getWorld(),getX()-SPRITE_WIDTH,getY(),up,false));
         getWorld()->addItem(new Flame(getWorld(),getX()+SPRITE_WIDTH,getY(),up,false));

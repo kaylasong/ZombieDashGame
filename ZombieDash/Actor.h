@@ -9,7 +9,7 @@ class StudentWorld;
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 class Actor: public GraphObject{
 public:
-    Actor(bool inf, bool des, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
+    Actor(bool inf, bool des, bool deser, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
     int nearObstacle(Actor* other);
     double distanceBetween(Actor* other, double& dist);
@@ -23,12 +23,14 @@ public:
     bool isDead(){return(m_isDead);}
     bool isSafe(){return(m_safe);}
     bool isObs(){return(isObstacle);}
+    bool isDestroyer(){return(m_isDestroyer);}
     StudentWorld* getWorld(){return(world);}
     
     virtual void getInfected(){}
 private:
     bool canBeInfected;
     bool canBeDestroyed;
+    bool m_isDestroyer;
     bool m_isDead;
     bool isObstacle;
     bool m_safe;
@@ -50,14 +52,16 @@ public:
 
 //////////////////////////////////
 
-class Damageable: public Actor{
+class Mover: public Actor{
 public:
-    Damageable(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
+    Mover(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     bool move(int dir, int dist);
+    bool smartMove(int dir, int dist);
+    bool chooseDir(int half, int dir1, int dir2, int dist);
 };
 
 //////////////
-class Infectable: public Damageable{
+class Infectable: public Mover{
 public:
     Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep);
     int getIC(){return(infectedCount);}
@@ -93,7 +97,7 @@ private:
     bool canMove;
 };
 ///////////////
-class Goodie: public Damageable{
+class Goodie: public Actor{
 public:
     Goodie(StudentWorld* sw, int id, int x, int y);
 };
@@ -116,9 +120,8 @@ public:
 };
 
 ///////////////
-class Zombie: public Damageable{
+class Zombie: public Mover{
 public:
-    ~Zombie();
     Zombie(StudentWorld* sw, int x, int y);
     void doVomit(double x, double y, int dir);
     void pickNewMovementPlan();
@@ -143,6 +146,7 @@ private:
 
 class SmartZombie: public Zombie{
 public:
+    ~SmartZombie();
     SmartZombie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
@@ -161,7 +165,6 @@ public:
 
 class Landmine: public Damaging{
 public:
-    ~Landmine();
     Landmine(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     void incrementActivationTime();

@@ -32,6 +32,8 @@ public:
     void decLandmines(){numLandmines--;}
     void decVaccines(){numVacc--;}
     
+    //working with them collisions
+    bool willOverlap(Actor* curr, double x, double y);
     bool willHitWall(Actor* curr, double x, double y);
     bool willOverlapWithInfectable(Actor* curr,double x, double y);
     bool willOverlapWithPenelope(Actor* curr, double x, double y);
@@ -39,7 +41,9 @@ public:
     bool willHitAnything(Actor* curr, double x, double y);
     bool killOverlapable(Actor* curr, double x, double y);
     void infectOverlapper(Actor* curr, double x, double y);
+    bool flameAllowed(double x, double y);
     
+    //for the smart movement
     double getMinDistance(Actor* curr,double & minDist);
     double distanceBetween(Actor* cur,Actor* other, double& dist);
     double distanceFromPenelope(Actor* curr, double & dist);
@@ -55,9 +59,6 @@ public:
     }
     int getGameStatus(){
         return(gameStatus);
-    }
-    void nextLevel(){
-        whichLevel++; 
     }
 
 private:

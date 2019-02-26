@@ -9,7 +9,6 @@ using namespace std;
 GameWorld* createStudentWorld(string assetPath){
 	return new StudentWorld(assetPath);
 }
-
 // Students:  Add code to this file, StudentWorld.h, Actor.h and Actor.cpp
 
 StudentWorld::~StudentWorld(){
@@ -60,6 +59,9 @@ Actor* StudentWorld::willHitObstacle(Actor* curr, double x, double y){
     }
     return(nullptr);
 }
+bool StudentWorld::willOverlap(Actor* curr, double x, double y){
+    return(objectOverlap(curr,x,y)!=nullptr);
+}
 bool StudentWorld::willHitWall(Actor* curr, double x, double y){
     Actor* other=willHitObstacle(curr,x,y);
     return(other!=nullptr&&!other->canBeDes());
@@ -106,17 +108,37 @@ bool StudentWorld::willHitAnything(Actor* curr, double x, double y){
     return(false);
 }
 bool StudentWorld::killOverlapable(Actor* curr, double x, double y){
-    Actor* other=willOverlapWithDestructable(curr, x, y);
-    if(other!=nullptr){
-        other->kill();
-        return(true);
+    bool killed=false;
+    std::list<Actor*>::iterator it=actors.begin();
+    while(it!=actors.end()){
+        if(curr!=(*it) && (*it)->canBeDes()){
+            if((x-(*it)->getX())*(x-(*it)->getX())+
+               (y-(*it)->getY())*(y-(*it)->getY())<=100){
+                (*it)->kill();
+                killed=true;
+            }
+        }
+        it++;
     }
-    return(false);
+    return(killed);
 }
 void StudentWorld::infectOverlapper(Actor* curr, double x, double y){
     Actor* other=objectOverlap(curr, x, y);
     if(other!=nullptr && other->canBeInf())
         other->getInfected();
+}
+bool StudentWorld::flameAllowed(double x, double y){
+    std::list<Actor*>::iterator it=actors.begin();
+    while(it!=actors.end()){
+        if((*it)->isObs() && !(*it)->isDestroyer() && !(*it)->canBeDes()){
+            if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
+               y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
+                return(false);
+            }
+        }
+        it++;
+    }
+    return(true);
 }
 double StudentWorld::distanceFromPenelope(Actor* curr, double & dist){
     return(distanceBetween(curr,penelope,dist));
@@ -129,7 +151,7 @@ double StudentWorld::distanceBetween(Actor* curr, Actor* other, double& dist){
     angle*=180;
     angle/=3.14159265;
     if(angle<0){
-        angle+=(2*180);
+        angle+=360;
     }
     return(angle);
 }
@@ -151,26 +173,8 @@ double StudentWorld::getMinDistance(Actor* curr,double & minDist){
     }
     return(ansAngle);
 }
-void StudentWorld::manageExit(Actor* curr){
-    Actor* other=objectOverlap(curr,curr->getX(),curr->getY());
-    if(other==nullptr)
-        return;
-    if(other->canBeInf()){
-        if(penelope!=other){
-            increaseScore(500);
-            playSound(SOUND_CITIZEN_SAVED);
-            other->save();
-        }
-        else if(numCitizens==0){
-            setGameStatus(GWSTATUS_FINISHED_LEVEL);
-            playSound(SOUND_LEVEL_FINISHED);
-            nextLevel();
-        }
-    }
-}
 double StudentWorld::closestTarget(Actor* curr,double & minDist){
     double temp=minDist;
-    //watch out for this one
     double tempAngle=0;
     double ansAngle=0;
     list<Actor*>::iterator it=actors.begin();
@@ -186,28 +190,48 @@ double StudentWorld::closestTarget(Actor* curr,double & minDist){
     }
     return(ansAngle);
 }
+void StudentWorld::manageExit(Actor* curr){
+    if(getGameStatus()==GWSTATUS_FINISHED_LEVEL)
+        return;
+    Actor* other=objectOverlap(curr,curr->getX(),curr->getY());
+    if(other==nullptr)
+        return;
+    if(other->canBeInf()){
+        if(penelope!=other){
+            increaseScore(500);
+            playSound(SOUND_CITIZEN_SAVED);
+            other->save();
+        }
+        else if(numCitizens==0){
+            setGameStatus(GWSTATUS_FINISHED_LEVEL);
+            playSound(SOUND_LEVEL_FINISHED);
+            whichLevel++;
+        }
+    }
+}
 ////////////////////////////////////////////////////////////////////////////
 
 StudentWorld::StudentWorld(string assetPath)
 : GameWorld(assetPath)
 {}
 
-int StudentWorld::init()
-{
-    numFlames=0;
-    numLandmines=0;
-    numVacc=0;
+int StudentWorld::init(){
     if(whichLevel==6)
         return(GWSTATUS_PLAYER_WON);
-    gameStatus=GWSTATUS_CONTINUE_GAME;
+    if(getLives()==0)
+        return(GWSTATUS_PLAYER_DIED);
+    setGameStatus(GWSTATUS_CONTINUE_GAME);
     Level l(assetPath());
     string level=levels[whichLevel]; 
     Level::LoadResult result = l.loadLevel(level);
     if (result == Level::load_fail_file_not_found)
-        cout << "Cannot find level01.txt data file" << endl;
+        cout << "Cannot find level0"<<whichLevel<<".txt data file" << endl;
     else if (result == Level::load_fail_bad_format)
         cout << "Your level was improperly formatted" << endl;
     else if(result==Level::load_success){
+        numFlames=0;
+        numLandmines=0;
+        numVacc=0;
         numCitizens=0;
         for(int r=0;r<16;r++){
             for(int c=0;c<16;c++){
@@ -253,9 +277,6 @@ int StudentWorld::init()
                 }
             }
         }
-        
-        
-        
     }
     return GWSTATUS_CONTINUE_GAME;
 }
@@ -280,7 +301,7 @@ int StudentWorld::move()
         topThing<<"-"<<setw(5)<<-1*getScore();
     else
         topThing<<setw(6)<<getScore();
-    topThing<<"  Level: "<<getLevel()<<"  Lives: "<<getLives();
+    topThing<<"  Level: "<<whichLevel+1<<"  Lives: "<<getLives();
     topThing<<"  Vacc: "<<numVacc<<"  Flames: "<<numFlames<<
     "  Mines: "<<numLandmines<<"  Infected: ";
     if(penelope->getIC()==-1)
@@ -291,8 +312,7 @@ int StudentWorld::move()
     return gameStatus;
 }
 
-void StudentWorld::cleanUp()
-{
+void StudentWorld::cleanUp(){
     list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
         if((*it)!=nullptr){
