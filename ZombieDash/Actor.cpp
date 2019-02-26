@@ -156,7 +156,6 @@ void Penelope::doSomething(){
     incrementIC();
     if(this->isDead()){
         getWorld()->playSound(SOUND_PLAYER_DIE);
-        this->getWorld()->decLives();
         this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
         return;
     }
@@ -498,7 +497,7 @@ void Landmine::doSomething(){
 
 Projectile::Projectile(StudentWorld* sw, int id, int x, int y, int dir)
 :Damaging(false,false,sw,id,x,y,dir,0){
-    screenTime=2;
+    screenTime=3;
 }
 void Projectile::decST(){
     if(screenTime==0){

@@ -30,7 +30,7 @@ void StudentWorld::getRidOfDead(){
 }
 
 void StudentWorld::addItem(Actor*add){
-    actors.push_front(add);
+    actors.push_back(add);
 }
 
 Actor* StudentWorld::objectOverlap(Actor* curr,double x, double y){
@@ -130,7 +130,7 @@ void StudentWorld::infectOverlapper(Actor* curr, double x, double y){
 bool StudentWorld::flameAllowed(double x, double y){
     std::list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
-        if((*it)->isObs() && !(*it)->isDestroyer() && !(*it)->canBeDes()){
+        if(!(*it)->isDestroyer() && !(*it)->canBeDes()){
             if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
                y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
                 return(false);
