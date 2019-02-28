@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 #include "Level.h"
 using namespace std;
 
@@ -45,7 +46,7 @@ Actor* StudentWorld::objectOverlap(Actor* curr,double x, double y){
     }
     return(nullptr);
 }
-Actor* StudentWorld::willHitObstacle(Actor* curr, double x, double y){
+Actor* StudentWorld::willHitAnything00(Actor* curr, double x, double y){
     std::list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
         if(curr!=(*it)){
@@ -63,8 +64,8 @@ bool StudentWorld::willOverlap(Actor* curr, double x, double y){
     return(objectOverlap(curr,x,y)!=nullptr);
 }
 bool StudentWorld::willHitWall(Actor* curr, double x, double y){
-    Actor* other=willHitObstacle(curr,x,y);
-    return(other!=nullptr&&!other->canBeDes());
+    Actor* other=willHitAnything00(curr,x,y);
+    return(other!=nullptr&&!other->canBeDes()&&other->isObs());
 }
 bool StudentWorld::willOverlapWithInfectable(Actor* curr, double x, double y){
     Actor* other=objectOverlap(curr,x,y);
@@ -90,22 +91,12 @@ Actor* StudentWorld::willOverlapWithDestructable(Actor* curr, double x, double y
 }
 //obstacle bounding box
 bool StudentWorld::obstacleThere(Actor* curr, double x, double y){
-    Actor* other=willHitObstacle(curr,x,y);
-    return(other!=nullptr);
+    Actor* other=willHitAnything00(curr,x,y);
+    return(other!=nullptr && other->isObs());
 }
 //checks to see if bounding box will overlap at all
 bool StudentWorld::willHitAnything(Actor* curr, double x, double y){
-    std::list<Actor*>::iterator it=actors.begin();
-    while(it!=actors.end()){
-        if(curr!=(*it)){
-            if(x<=(*it)->getX()+15 && x+15>=(*it)->getX()&&
-               y<=(*it)->getY()+15 && y+15>=(*it)->getY()){
-                return(true);
-            }
-        }
-        it++;
-    }
-    return(false);
+    return(willHitAnything00(curr,x,y)!=nullptr); 
 }
 bool StudentWorld::killOverlapable(Actor* curr, double x, double y){
     bool killed=false;
@@ -193,41 +184,48 @@ double StudentWorld::closestTarget(Actor* curr,double & minDist){
 void StudentWorld::manageExit(Actor* curr){
     if(getGameStatus()==GWSTATUS_FINISHED_LEVEL)
         return;
-    Actor* other=objectOverlap(curr,curr->getX(),curr->getY());
-    if(other==nullptr)
-        return;
-    if(other->canBeInf()){
-        if(penelope!=other){
-            increaseScore(500);
-            playSound(SOUND_CITIZEN_SAVED);
-            other->save();
+    list<Actor*>::iterator it=actors.begin();
+    while(it!=actors.end()){
+        if((*it)->canBeInf() && ((pow(curr->getX()-(*it)->getX(),2))+
+           (pow(curr->getY()-(*it)->getY(),2))<=100)){
+            if(penelope!=(*it)){
+                increaseScore(500);
+                playSound(SOUND_CITIZEN_SAVED);
+                (*it)->save();
+                return;
+            }
+            else if(numCitizens==0){
+                setGameStatus(GWSTATUS_FINISHED_LEVEL);
+                playSound(SOUND_LEVEL_FINISHED);
+                numLevel++;
+                return;
+            }
         }
-        else if(numCitizens==0){
-            setGameStatus(GWSTATUS_FINISHED_LEVEL);
-            playSound(SOUND_LEVEL_FINISHED);
-            whichLevel++;
-        }
+        it++;
     }
+    
 }
 ////////////////////////////////////////////////////////////////////////////
 
 StudentWorld::StudentWorld(string assetPath)
-: GameWorld(assetPath)
-{}
+: GameWorld(assetPath){
+    numLevel=1;
+    level.fill('0');
+    level<<"level"<<setw(2)<<numLevel<<".txt";
+}
 
 int StudentWorld::init(){
-    if(whichLevel==6)
+    if(numLevel==100)
         return(GWSTATUS_PLAYER_WON);
-    if(getLives()==0)
-        return(GWSTATUS_PLAYER_DIED);
     setGameStatus(GWSTATUS_CONTINUE_GAME);
     Level l(assetPath());
-    string level=levels[whichLevel]; 
-    Level::LoadResult result = l.loadLevel(level);
+    level.str("");
+    level<<"level"<<setw(2)<<numLevel<<".txt";
+    Level::LoadResult result = l.loadLevel(level.str());
     if (result == Level::load_fail_file_not_found)
-        cout << "Cannot find level0"<<whichLevel<<".txt data file" << endl;
+        return(GWSTATUS_PLAYER_WON);
     else if (result == Level::load_fail_bad_format)
-        cout << "Your level was improperly formatted" << endl;
+        return(GWSTATUS_LEVEL_ERROR);
     else if(result==Level::load_success){
         numFlames=0;
         numLandmines=0;
@@ -283,11 +281,10 @@ int StudentWorld::init(){
 
 int StudentWorld::move()
 {
-    if(whichLevel==6)
+    if(numLevel==100)
         return(GWSTATUS_PLAYER_WON);
     // This code is here merely to allow the game to build, run, and terminate after you hit enter.
     // Notice that the return value GWSTATUS_PLAYER_DIED will cause our framework to end the current level.
-    penelope->doSomething();
     list<Actor*>::iterator it=actors.begin();
     while(it!=actors.end()){
         (*it)->doSomething();
@@ -301,7 +298,7 @@ int StudentWorld::move()
         topThing<<"-"<<setw(5)<<-1*getScore();
     else
         topThing<<setw(6)<<getScore();
-    topThing<<"  Level: "<<whichLevel+1<<"  Lives: "<<getLives();
+    topThing<<"  Level: "<<numLevel<<"  Lives: "<<getLives();
     topThing<<"  Vacc: "<<numVacc<<"  Flames: "<<numFlames<<
     "  Mines: "<<numLandmines<<"  Infected: ";
     if(penelope->getIC()==-1)

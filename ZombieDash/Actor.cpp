@@ -112,6 +112,7 @@ bool Mover::chooseDir(int half,int dir1, int dir2, int dist){
     return(false);
 }
 
+
 Infectable::Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep)
 :Mover(true, true, sw, id, x, y, dir, dep){
     infectedCount=-1;
@@ -153,39 +154,39 @@ Penelope::~Penelope(){
     }
 }
 void Penelope::doSomething(){
+    if(getIC()==499){
+        kill();
+        return;
+    }
     incrementIC();
     if(this->isDead()){
         getWorld()->playSound(SOUND_PLAYER_DIE);
         this->getWorld()->setGameStatus(GWSTATUS_PLAYER_DIED);
         return;
     }
-    int move;
-    if (getWorld()->getKey(move)){
-        switch (move)
+    int p_move;
+    if (getWorld()->getKey(p_move)){
+        switch (p_move)
         {
             case KEY_PRESS_LEFT:
                 if(getDirection()!=left)
                     setDirection(left);
-                else if(!getWorld()->obstacleThere(this,getX()-4,getY()))
-                    moveTo(getX()-4,getY());
+                move(left,4);
                 break;
             case KEY_PRESS_RIGHT:
                 if(getDirection()!=right)
                     setDirection(right);
-                else if(!getWorld()->obstacleThere(this,getX()+4,getY()))
-                    moveTo(getX()+4,getY());
+                move(right,4);
                 break;
             case KEY_PRESS_DOWN:
                 if(getDirection()!=down)
                     setDirection(down);
-                else if(!getWorld()->obstacleThere(this,getX(),getY()-4))
-                    moveTo(getX(),getY()-4);
+                move(down,4);
                 break;
             case KEY_PRESS_UP:
                 if(getDirection()!=up)
                     setDirection(up);
-                else if(!getWorld()->obstacleThere(this,getX(),getY()+4))
-                    moveTo(getX(),getY()+4);
+                move(up,4);
                 break;
             case KEY_PRESS_SPACE:
                 deployFlame();
@@ -268,6 +269,7 @@ Citizen::Citizen(StudentWorld* sw, int x, int y)
 :Infectable(sw,IID_CITIZEN,x,y,0,0){
     canMove=false;
 }
+
 void Citizen::doSomething(){
     incrementIC();
     toggle();
@@ -497,7 +499,7 @@ void Landmine::doSomething(){
 
 Projectile::Projectile(StudentWorld* sw, int id, int x, int y, int dir)
 :Damaging(false,false,sw,id,x,y,dir,0){
-    screenTime=3;
+    screenTime=2;
 }
 void Projectile::decST(){
     if(screenTime==0){

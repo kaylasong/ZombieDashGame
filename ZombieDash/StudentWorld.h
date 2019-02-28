@@ -3,6 +3,7 @@
 
 #include "GameWorld.h"
 #include <string>
+#include <sstream>
 #include "GraphObject.h"
 #include "Actor.h"
 #include <list>
@@ -68,14 +69,15 @@ private:
     int numVacc;
     
     Actor* objectOverlap(Actor* curr, double x, double y);
-    Actor* willHitObstacle(Actor* curr, double x, double y);
+    Actor* willHitAnything00(Actor* curr, double x, double y);
     Actor* willOverlapWithDestructable(Actor* curr, double x, double y);
     
     std::list<Actor*> actors;
     int numCitizens;
     int gameStatus;
     int whichLevel=0;
-    std::string levels[6]={"level01.txt","level02.txt","level03.txt","level04.txt","level05.txt","level06.txt"};
+    std::ostringstream level;
+    int numLevel;
 };
 
 #endif // STUDENTWORLD_H_
