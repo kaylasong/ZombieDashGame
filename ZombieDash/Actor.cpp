@@ -73,17 +73,13 @@ bool Mover::smartMove(int dir, int dist){
     switch(dir){
         case 0:
         case 360:
-            if(move(right,dist))
-                return(true);
+            return(move(right,dist));
         case 90:
-            if(move(up,dist))
-                return(true);
+            return(move(up,dist));
         case 180:
-            if(move(left,dist))
-                return(true);
+            return(move(left,dist));
         case 270:
-            if(move(down,dist))
-                return(true);
+            return(move(down,dist));
     }
     int half=randInt(1,2);
     if(dir>0&&dir<90)
@@ -154,10 +150,6 @@ Penelope::~Penelope(){
     }
 }
 void Penelope::doSomething(){
-    if(getIC()==499){
-        kill();
-        return;
-    }
     incrementIC();
     if(this->isDead()){
         getWorld()->playSound(SOUND_PLAYER_DIE);
@@ -253,6 +245,7 @@ void Penelope::deployVaccine(){
     if(getWorld()->getVaccines()==0 || getIC()==-1)
         return;
     getHealed();
+    getWorld()->decVaccines();
 }
 void Penelope::deployLandmine(){
     if(getWorld()->getLandmines()==0)
@@ -271,6 +264,8 @@ Citizen::Citizen(StudentWorld* sw, int x, int y)
 }
 
 void Citizen::doSomething(){
+    if(getIC()==0)
+        getWorld()->playSound(SOUND_CITIZEN_INFECTED);
     incrementIC();
     toggle();
     if(isDead() || !getCM())
@@ -340,27 +335,29 @@ void Zombie::doVomit(double x, double y, int dir){
 bool Zombie::vomit(){
     int dir=getDirection();
     int chance=randInt(1,3);
+    if(chance!=1)
+        return(false);
     switch(dir){
         case right:
-            if(getWorld()->willOverlapWithInfectable(this,getX()+SPRITE_WIDTH,getY()) && chance==1){
+            if(getWorld()->willOverlapWithInfectable(this,getX()+SPRITE_WIDTH,getY())){
                 doVomit(getX()+SPRITE_WIDTH,getY(), right);
                 return(true);
             }
             break;
         case left:
-            if(getWorld()->willOverlapWithInfectable(this,getX()-SPRITE_WIDTH,getY()) && chance==1){
+            if(getWorld()->willOverlapWithInfectable(this,getX()-SPRITE_WIDTH,getY())){
                 doVomit(getX()-SPRITE_WIDTH,getY(), left);
                 return(true);
             }
             break;
         case down:
-            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()-SPRITE_HEIGHT) && chance==1){
+            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()-SPRITE_HEIGHT)){
                 doVomit(getX(),getY()-SPRITE_HEIGHT, down);
                 return(true);
             }
             break;
         case up:
-            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()+SPRITE_HEIGHT) && chance==1){
+            if(getWorld()->willOverlapWithInfectable(this,getX(),getY()+SPRITE_HEIGHT)){
                 doVomit(getX(),getY()+SPRITE_HEIGHT, up);
                 return(true);
             }
@@ -514,7 +511,7 @@ Flame::Flame(StudentWorld* sw, int x, int y, int dir, bool ilf)
     isLandmineFlame=ilf;
 }
 Flame::~Flame(){
-    if(isLandmineFlame)
+    if(isDead() && isLandmineFlame)
         getWorld()->addItem(new Pit(getWorld(),getX(),getY()));
 }
 void Flame::doSomething(){
@@ -526,9 +523,6 @@ void Flame::doSomething(){
 
 Vomit::Vomit(StudentWorld* sw, int x, int y, int dir)
 :Projectile(sw,IID_VOMIT,x,y,dir){}
-void Vomit::infect(Infectable* target){
-    target->getInfected();
-}
 void Vomit::doSomething(){
     if(isDead())
         return;

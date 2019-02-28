@@ -9,11 +9,9 @@ class StudentWorld;
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 class Actor: public GraphObject{
 public:
+    virtual ~Actor(){}
     Actor(bool inf, bool des, bool deser, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     virtual void doSomething()=0;
-    int nearObstacle(Actor* other);
-    double distanceBetween(Actor* other, double& dist);
-    double minDistance(double & minDist);
     
     //accessors
     void kill(){m_isDead=true;}
@@ -40,12 +38,14 @@ private:
 //////////////////////////////////
 class Wall: public Actor{
 public:
+    virtual ~Wall(){}
     Wall(StudentWorld* sw, int x, int y);
     void doSomething();
 };
 
 class Exit: public Actor{
 public:
+    virtual ~Exit(){}
     Exit(StudentWorld* sw, int x, int y);
     void doSomething();
 };
@@ -54,15 +54,18 @@ public:
 
 class Mover: public Actor{
 public:
+    virtual ~Mover(){}
     Mover(bool inf, bool obs, StudentWorld* sw, int id, double x, double y, int dir, int dep);
     bool move(int dir, int dist);
     bool smartMove(int dir, int dist);
+private:
     bool chooseDir(int half, int dir1, int dir2, int dist);
 };
 
 //////////////
 class Infectable: public Mover{
 public:
+    virtual ~Infectable(){}
     Infectable(StudentWorld* sw, int id, int x, int y, int dir, int dep);
     int getIC(){return(infectedCount);}
     void incrementIC();
@@ -74,47 +77,48 @@ private:
 
 class Penelope: public Infectable{
 public:
-    ~Penelope();
+    virtual ~Penelope();
     Penelope(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     //all the goodie thingies
     void deployVaccine();
     void deployFlame();
     void deployLandmine();
-private:
-    bool checkMovement(int dir); 
 };
 
 class Citizen: public Infectable{
 public:
-    ~Citizen();
+    virtual ~Citizen();
     Citizen(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     bool getCM(){return(canMove);};
     void toggle(){canMove=!canMove;};
-    double minDistance(double & minDist);
 private:
     bool canMove;
 };
 ///////////////
 class Goodie: public Actor{
 public:
+    virtual ~Goodie(){}
     Goodie(StudentWorld* sw, int id, int x, int y);
 };
 
 class VaccineGoodie: public Goodie{
 public:
+    virtual ~VaccineGoodie(){}
     VaccineGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 
 class GasCanGoodie: public Goodie{
 public:
+    virtual ~GasCanGoodie(){}
     GasCanGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 class LandmineGoodie: public Goodie{
 public:
+    virtual ~LandmineGoodie(){};
     LandmineGoodie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
@@ -122,6 +126,7 @@ public:
 ///////////////
 class Zombie: public Mover{
 public:
+    virtual ~Zombie(){}
     Zombie(StudentWorld* sw, int x, int y);
     void doVomit(double x, double y, int dir);
     void pickNewMovementPlan();
@@ -137,7 +142,7 @@ private:
 
 class DumbZombie: public Zombie{
 public:
-    ~DumbZombie();
+    virtual ~DumbZombie();
     DumbZombie(StudentWorld* sw, int x, int y, bool holdsVacc);
     virtual void doSomething();
 private:
@@ -146,7 +151,7 @@ private:
 
 class SmartZombie: public Zombie{
 public:
-    ~SmartZombie();
+    virtual ~SmartZombie();
     SmartZombie(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
@@ -154,17 +159,20 @@ public:
 
 class Damaging: public Actor{
 public:
+    virtual ~Damaging(){}
     Damaging(bool inf, bool des, StudentWorld* sw, int id, int x, int y, int dir, int dep);
 };
 
 class Pit: public Damaging{
 public:
+    virtual ~Pit(){}
     Pit(StudentWorld* sw, int x, int y);
     virtual void doSomething();
 };
 
 class Landmine: public Damaging{
 public:
+    virtual ~Landmine(){}
     Landmine(StudentWorld* sw, int x, int y);
     virtual void doSomething();
     void incrementActivationTime();
@@ -175,6 +183,7 @@ private:
 
 class Projectile: public Damaging{
 public:
+    virtual ~Projectile(){}
     Projectile(StudentWorld* sw, int id, int x, int y, int dir);
     void decST();
     int getScreenTime(){return(screenTime);}
@@ -184,7 +193,7 @@ private:
 
 class Flame: public Projectile{
 public:
-    ~Flame();
+    virtual ~Flame();
     Flame(StudentWorld* sw, int x, int y, int dir, bool ilf);
     virtual void doSomething();
     bool getIsLandmineFlame(){return(isLandmineFlame);}
@@ -194,9 +203,9 @@ private:
 
 class Vomit: public Projectile{
 public:
+    virtual ~Vomit(){}
     Vomit(StudentWorld* sw, int x, int y, int dir);
     virtual void doSomething();
-    void infect(Infectable* target);
 };
 
 
